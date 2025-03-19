@@ -1,6 +1,7 @@
 'use strict';
 
 const { faker, fakerSK } = require('@faker-js/faker');
+const bcrypt = require('bcrypt');
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
@@ -11,7 +12,7 @@ module.exports = {
             surname: 'Surname1',
             username: 'user1',
             email: 'user1@email.com',
-            password: 'password1',
+            password: await bcrypt.hash('password1', 10),
             bio: faker.lorem.lines(2),
             photo: faker.image.avatar(),
             createdAt: new Date(),
