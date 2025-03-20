@@ -1,7 +1,7 @@
 'use strict';
 
 const { faker, fakerSK } = require('@faker-js/faker');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
@@ -85,6 +85,7 @@ module.exports = {
             address: faker.location.streetAddress(),
             city: faker.location.city(),
             zip: faker.location.zipCode(),
+            country: faker.location.country(),
             number: faker.finance.accountNumber(),
         });
     }

@@ -3,10 +3,12 @@ const express = require('express');
 const cors = require('cors');
 const db = require('./database/models');
 const routes = require('./routes/routes');
+const AuthMiddleware = require('./middleware/authMiddleware');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use('/users', AuthMiddleware.verifyUser);
 app.use(routes);
 
 const PORT = 8080;

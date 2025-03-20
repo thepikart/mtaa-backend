@@ -1,4 +1,6 @@
 const db = require('../database/models');
+const { validationResult, checkSchema } = require('express-validator');
+const { BankAccountSchema } = require('../validators/usersValidator');
 
 exports.getUser = async (req, res) => {
     const { id } = req.params;
@@ -25,6 +27,7 @@ exports.getUser = async (req, res) => {
             place: event.place,
             date: event.date,
             description: event.description,
+            photo: event.photo,
         })),
         goingToEvents: user.Events.map(event => ({
             id: event.id,
@@ -32,6 +35,59 @@ exports.getUser = async (req, res) => {
             place: event.place,
             date: event.date,
             description: event.description,
+            photo: event.photo,
         }))
     });
+}
+
+exports.getBankAccount = async (req, res) => {
+    const { id } = req.user;
+    const user = await db.User.findByPk(id);
+    const bankAccount = await db.BankAccount.findOne({ where: { user_id: id } });
+
+    if (!bankAccount){
+        return res.status(200).json({
+            user: {
+                name: user.name,
+                surname: user.surname,
+            },
+            bankAccount: null
+        });
+    }
+
+    return res.status(200).json({
+        user: {
+            name: user.name,
+            surname: user.surname,
+        },
+        bankAccount: {
+            address: bankAccount.address,
+            city: bankAccount.city,
+            zip: bankAccount.zip,
+            country: bankAccount.country,
+            number: bankAccount.number,
+        }
+    });
+}
+
+exports.editBankAccount = async (req, res) => {
+    await Promise.all(checkSchema(BankAccountSchema).map(validation => validation.run(req)));
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ message: 'Invalid value' });
+    }
+
+    const { id } = req.user;
+    const { address, city, zip, country, number } = req.body;
+
+    var bankAccount = await db.BankAccount.findOne({ where: { user_id: id } });
+
+    if (!bankAccount){
+        bankAccount = await db.BankAccount.create({ address, city, zip, country, number, user_id: id });
+        return res.status(201).json(bankAccount)
+    }
+
+    await bankAccount.update({ address, city, zip, country, number });
+
+    return res.status(200).json(bankAccount);
 }

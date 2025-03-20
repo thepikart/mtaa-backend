@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const { validationResult, checkSchema } = require('express-validator');
-const { createAccountSchema } = require('../validators/authValidator');
+const { CreateAccountSchema } = require('../validators/authValidator');
 
 exports.login = async (req, res) => {
     const { email, password } = req.body;
@@ -25,7 +25,7 @@ exports.login = async (req, res) => {
 }
 
 exports.createAccount = async (req, res) => {
-    await Promise.all(checkSchema(createAccountSchema).map(validation => validation.run(req)));
+    await Promise.all(checkSchema(CreateAccountSchema).map(validation => validation.run(req)));
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ message: 'Invalid value' });
@@ -45,7 +45,6 @@ exports.createAccount = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-
     const user = await db.User.create({
         name,
         surname,
@@ -55,5 +54,4 @@ exports.createAccount = async (req, res) => {
     });
 
     return res.status(201).json(user);
-
 }

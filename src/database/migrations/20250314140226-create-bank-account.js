@@ -22,6 +22,9 @@ module.exports = {
       zip: {
         type: Sequelize.STRING
       },
+      country: {
+        type: Sequelize.STRING
+      },
       number: {
         type: Sequelize.STRING
       }

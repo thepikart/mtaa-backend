@@ -1,4 +1,4 @@
-const createAccountSchema = {
+const CreateAccountSchema = {
     name: {
         in: ['body'],
         notEmpty: true,
@@ -42,4 +42,4 @@ const createAccountSchema = {
     }
 }
 
-module.exports = { createAccountSchema };
+module.exports = { CreateAccountSchema };
