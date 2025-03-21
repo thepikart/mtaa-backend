@@ -53,5 +53,7 @@ exports.createAccount = async (req, res) => {
         password: hashedPassword
     });
 
+    await db.Notification.create({ user_id: user.id });
+
     return res.status(201).json(user);
 }

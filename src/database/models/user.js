@@ -14,6 +14,7 @@ module.exports = (sequelize, DataTypes) => {
       User.hasMany(models.Comment, { foreignKey: "user_id" });
       User.hasOne(models.BankAccount, { foreignKey: "user_id" });
       User.belongsToMany(models.Event, { through: models.UserEvent, foreignKey: "user_id" });
+      User.hasOne(models.Notification, { foreignKey: "user_id" });
     }
   }
   User.init({
