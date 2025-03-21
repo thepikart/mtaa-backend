@@ -121,22 +121,38 @@ exports.editUser = async (req, res) => {
         }
     }
 
-    const updatedFields = {};
-    if (name) updatedFields.name = name;
-    if (surname) updatedFields.surname = surname;
-    if (username) updatedFields.username = username;
-    if (bio) updatedFields.bio = bio;
-
+    var photo = user.photo;
     if (req.file) {
-        fs.unlinkSync(user.photo);
-        updatedFields.photo = req.file.destination + req.file.filename;
+        if (user.photo && fs.existsSync(user.photo)) {
+            fs.unlinkSync(user.photo);
+        }
+        photo = req.file.destination + req.file.filename;
     }
 
     try {
-        await user.update(updatedFields);
+        await user.update({ name, surname, username, bio, photo });
         return res.status(200).json({ message: 'User updated successfully' });
     }
     catch (err) {
         return res.status(400).json({ message: 'Error updating user' });
     }
+}
+
+exports.getNotifications = async (req, res) => {
+    const { id } = req.user;
+
+    const notifications = await db.Notification.findOne({ where: { user_id: id } });
+
+    return res.status(200).json(notifications);
+}
+
+exports.updateNotifications = async (req, res) => {
+    const { id } = req.user;
+    const { my_attendees, my_comments, my_time, reg_attendees, reg_comments, reg_time } = req.body;
+
+    const userNotifications = await db.Notification.findOne({ where: { user_id: id } });
+
+    await userNotifications.update({ my_attendees, my_comments, my_time, reg_attendees, reg_comments, reg_time });
+
+    return res.status(200).json(userNotifications);
 }

@@ -28,6 +28,9 @@ router.put('/users/bank-account', UsersController.editBankAccount);
 router.get('/users/edit', UsersController.getEditUser);
 router.patch('/users/edit', upload.single('photo'), UsersController.editUser);
 
+router.get('/users/notifications', UsersController.getNotifications);
+router.patch('/users/notifications', UsersController.updateNotifications);
+
 router.get('/users/:id', UsersController.getUser);
 
 
