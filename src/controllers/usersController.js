@@ -1,6 +1,7 @@
 const db = require('../database/models');
 const { validationResult, checkSchema } = require('express-validator');
 const { BankAccountSchema } = require('../validators/usersValidator');
+const fs = require('fs');
 
 exports.getUser = async (req, res) => {
     const { id } = req.params;
@@ -16,7 +17,8 @@ exports.getUser = async (req, res) => {
     return res.status(200).json({
         user: {
             id: user.id,
-            name: user.name + ' ' + user.surname,
+            name: user.name,
+            surname: user.surname,
             username: user.username,
             bio: user.bio,
             photo: user.photo,
@@ -45,7 +47,7 @@ exports.getBankAccount = async (req, res) => {
     const user = await db.User.findByPk(id);
     const bankAccount = await db.BankAccount.findOne({ where: { user_id: id } });
 
-    if (!bankAccount){
+    if (!bankAccount) {
         return res.status(200).json({
             user: {
                 name: user.name,
@@ -82,7 +84,7 @@ exports.editBankAccount = async (req, res) => {
 
     var bankAccount = await db.BankAccount.findOne({ where: { user_id: id } });
 
-    if (!bankAccount){
+    if (!bankAccount) {
         bankAccount = await db.BankAccount.create({ address, city, zip, country, number, user_id: id });
         return res.status(201).json(bankAccount)
     }
@@ -90,4 +92,51 @@ exports.editBankAccount = async (req, res) => {
     await bankAccount.update({ address, city, zip, country, number });
 
     return res.status(200).json(bankAccount);
+}
+
+exports.getEditUser = async (req, res) => {
+    const { id } = req.user;
+
+    const user = await db.User.findByPk(id);
+
+    return res.status(200).json({
+        name: user.name,
+        surname: user.surname,
+        username: user.username,
+        bio: user.bio,
+        photo: user.photo,
+    });
+}
+
+exports.editUser = async (req, res) => {
+    const { name, surname, username, bio } = req.body;
+    const { id } = req.user;
+
+    const user = await db.User.findByPk(id);
+
+    if (username) {
+        const usernameExists = await db.User.findOne({ where: { username } });
+        if (usernameExists && usernameExists.id !== id) {
+            return res.status(400).json({ message: 'Username already exists' });
+        }
+    }
+
+    const updatedFields = {};
+    if (name) updatedFields.name = name;
+    if (surname) updatedFields.surname = surname;
+    if (username) updatedFields.username = username;
+    if (bio) updatedFields.bio = bio;
+
+    if (req.file) {
+        fs.unlinkSync(user.photo);
+        updatedFields.photo = req.file.destination + req.file.filename;
+    }
+
+    try {
+        await user.update(updatedFields);
+        return res.status(200).json({ message: 'User updated successfully' });
+    }
+    catch (err) {
+        return res.status(400).json({ message: 'Error updating user' });
+    }
 }

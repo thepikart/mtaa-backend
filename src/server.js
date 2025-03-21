@@ -8,14 +8,13 @@ const AuthMiddleware = require('./middleware/authMiddleware');
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use('/photos', express.static('photos'));
 app.use('/users', AuthMiddleware.verifyUser);
 app.use(routes);
 
-const PORT = 8080;
-
 db.sequelize.authenticate()
   .then(() => {
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    app.listen(process.env.PORT , () => console.log(`Server running on port ${process.env.PORT}`));
   })
   .catch((err) => console.log('Error connecting to database:', err));
 
