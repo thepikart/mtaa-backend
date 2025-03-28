@@ -26,6 +26,38 @@ const BankAccountSchema = {
     }
 }
 
+const editUserSchema = {
+    name: {
+        in: ['body'],
+        isString: true,
+        isLength: {
+            options: { max: 255 }
+        }
+    },
+    surname: {
+        in: ['body'],
+        isString: true,
+        isLength: {
+            options: { max: 255 }
+        }
+    },
+    username: {
+        in: ['body'],
+        isString: true,
+        isLength: {
+            options: { max: 255 }
+        }
+    },
+    bio: {
+        in: ['body'],
+        isString: true,
+        isLength: {
+            options: { max: 255 }
+        }
+    }
+}
+
 module.exports = {
-    BankAccountSchema
+    BankAccountSchema,
+    editUserSchema
 }

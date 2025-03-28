@@ -1,6 +1,6 @@
 const db = require('../database/models');
 const { validationResult, checkSchema } = require('express-validator');
-const { BankAccountSchema } = require('../validators/usersValidator');
+const { BankAccountSchema, editUserSchema } = require('../validators/usersValidator');
 const fs = require('fs');
 
 exports.getUser = async (req, res) => {
@@ -45,6 +45,7 @@ exports.getUser = async (req, res) => {
 exports.getBankAccount = async (req, res) => {
     const { id } = req.user;
     const user = await db.User.findByPk(id);
+
     const bankAccount = await db.BankAccount.findOne({ where: { user_id: id } });
 
     if (!bankAccount) {
@@ -82,21 +83,22 @@ exports.editBankAccount = async (req, res) => {
     const { id } = req.user;
     const { address, city, zip, country, number } = req.body;
 
-    var bankAccount = await db.BankAccount.findOne({ where: { user_id: id } });
+    const [bankAccount, created] = await db.BankAccount.findOrCreate({
+        where: { user_id: id },
+        defaults: { address, city, zip, country, number }
+    });
 
-    if (!bankAccount) {
-        bankAccount = await db.BankAccount.create({ address, city, zip, country, number, user_id: id });
-        return res.status(201).json(bankAccount)
+    if (!created) {
+        await bankAccount.update({ address, city, zip, country, number });
+        return res.status(200).json(bankAccount);
     }
-
-    await bankAccount.update({ address, city, zip, country, number });
-
-    return res.status(200).json(bankAccount);
+    else {
+        return res.status(201).json(bankAccount);
+    }
 }
 
 exports.getEditUser = async (req, res) => {
     const { id } = req.user;
-
     const user = await db.User.findByPk(id);
 
     return res.status(200).json({
@@ -109,9 +111,14 @@ exports.getEditUser = async (req, res) => {
 }
 
 exports.editUser = async (req, res) => {
+    await Promise.all(checkSchema(editUserSchema).map(validation => validation.run(req)));
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ message: 'Invalid value' });
+    }
+    
     const { name, surname, username, bio } = req.body;
     const { id } = req.user;
-
     const user = await db.User.findByPk(id);
 
     if (username) {
@@ -129,19 +136,24 @@ exports.editUser = async (req, res) => {
         photo = req.file.destination + req.file.filename;
     }
 
-    try {
-        await user.update({ name, surname, username, bio, photo });
-        return res.status(200).json({ message: 'User updated successfully' });
-    }
-    catch (err) {
-        return res.status(400).json({ message: 'Error updating user' });
-    }
+    await user.update({ name, surname, username, bio, photo });
+    return res.status(200).json({
+        name: user.name,
+        surname: user.surname,
+        username: user.username,
+        bio: user.bio,
+        photo: user.photo,
+    });
 }
 
 exports.getNotifications = async (req, res) => {
     const { id } = req.user;
 
     const notifications = await db.Notification.findOne({ where: { user_id: id } });
+
+    if (!notifications) {
+        return res.status(404).json({ message: 'Notifications not found' });
+    }
 
     return res.status(200).json(notifications);
 }
@@ -151,6 +163,10 @@ exports.updateNotifications = async (req, res) => {
     const { my_attendees, my_comments, my_time, reg_attendees, reg_comments, reg_time } = req.body;
 
     const userNotifications = await db.Notification.findOne({ where: { user_id: id } });
+
+    if (!userNotifications) {
+        return res.status(404).json({ message: 'Notifications not found' });
+    }
 
     await userNotifications.update({ my_attendees, my_comments, my_time, reg_attendees, reg_comments, reg_time });
 

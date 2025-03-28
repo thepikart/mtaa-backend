@@ -1,0 +1,76 @@
+Table user {
+  id integer [pk]
+  name varchar [not null]
+  surname varchar [not null]
+  username varchar [not null, unique]
+  email varchar [not null, unique]
+  password varchar [not null]
+  bio text
+  photo varchar 
+}
+
+Table event {
+  id integer [pk]
+  title varchar [not null]
+  place varchar [not null]
+  latitude float [not null]
+  longitude float [not null]
+  date timestamp [not null]
+  category category [not null]
+  description text [not null]
+  price float
+  creator_id integer [not null]
+  photo varchar
+}
+
+Enum category {
+  politics
+  sports
+  music
+  technology
+  art
+  other
+}
+
+Table user_events {
+  user_id integer [not null]
+  event_id integer [not null]
+  paid boolean
+}
+
+Table comment {
+  id integer [pk]
+  user_id integer [not null]
+  event_id integer [not null]
+  content text [not null]
+  created_at timestamp [not null]
+}
+
+Table bank_account {
+  id integer [pk]
+  user_id integer [not null]
+  address varchar
+  city varchar
+  zip varchar
+  country varchar
+  number varchar
+}
+
+Table notifications {
+  id integer [pk]
+  user_id integer [not null]
+  my_attendees bool
+  my_comments bool
+  my_time bool
+  reg_attendees bool
+  reg_comments bool
+  reg_time bool
+}
+
+ref: user.id < event.creator_id
+ref: user.id - bank_account.user_id
+ref: user.id < user_events.user_id
+ref: event.id < user_events.event_id
+ref: user.id < comment.user_id
+ref: event.id < comment.event_id
+ref: user.id - notifications.user_id
