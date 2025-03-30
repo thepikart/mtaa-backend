@@ -9,9 +9,14 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
 
     const user = await db.User.findOne({ where: { email } });
+
+    if (!user) {
+        return res.status(400).json({ message: 'Invalid email or password' });
+    }
+
     const correctPassword = await bcrypt.compare(password, user.password);
 
-    if (!user || !correctPassword) {
+    if (!correctPassword) {
         return res.status(400).json({ message: 'Invalid email or password' });
     }
 
@@ -21,7 +26,18 @@ exports.login = async (req, res) => {
         { expiresIn: '1h' }
     )
 
-    return res.status(200).json({ token });
+    return res.status(200).json({
+        user: {
+            id: user.id,
+            name: user.name,
+            surname: user.surname,
+            username: user.username,
+            email: user.email,
+            bio: user.bio,
+            photo: user.photo,
+        },
+        token
+    });
 }
 
 exports.createAccount = async (req, res) => {
@@ -55,5 +71,36 @@ exports.createAccount = async (req, res) => {
 
     await db.Notification.create({ user_id: user.id });
 
-    return res.status(201).json(user);
+    const token = jwt.sign(
+        { id: user.id, email: user.email },
+        process.env.JWT_KEY,
+        { expiresIn: '1h' }
+    )
+
+    return res.status(201).json({
+        user: {
+            id: user.id,
+            name: user.name,
+            surname: user.surname,
+            username: user.username,
+            email: user.email,
+            bio: user.bio,
+            photo: user.photo,
+        },
+        token
+    });
+}
+
+exports.getMe = async (req, res) => {
+    const { id } = req.user;
+
+    const user = await db.User.findByPk(id, {
+        attributes: ['id', 'name', 'surname', 'username', 'email', 'bio', 'photo']
+    });
+
+    if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+    }
+
+    return res.status(200).json(user);
 }

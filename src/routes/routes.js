@@ -20,6 +20,7 @@ const upload = multer({ storage });
 
 router.post('/login', AuthController.login);
 router.post('/create-account', AuthController.createAccount);
+router.get('/me', AuthController.getMe);
 
 router.get('/users/bank-account', UsersController.getBankAccount);
 router.put('/users/bank-account', UsersController.editBankAccount);

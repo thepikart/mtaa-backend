@@ -1,5 +1,4 @@
 'use strict';
-const { tr } = require('@faker-js/faker');
 const {
   Model
 } = require('sequelize');

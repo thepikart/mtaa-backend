@@ -12,6 +12,8 @@ app.use(cors());
 app.use(express.json());
 app.use('/photos', express.static('photos'));
 app.use('/users', AuthMiddleware.verifyUser);
+app.use('/me', AuthMiddleware.verifyUser);
+app.use('/events', AuthMiddleware.verifyUser);
 app.use(routes);
 
 const server = http.createServer(app);
