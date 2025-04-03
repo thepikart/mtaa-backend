@@ -97,19 +97,6 @@ exports.editBankAccount = async (req, res) => {
     }
 }
 
-exports.getEditUser = async (req, res) => {
-    const { id } = req.user;
-    const user = await db.User.findByPk(id);
-
-    return res.status(200).json({
-        name: user.name,
-        surname: user.surname,
-        username: user.username,
-        bio: user.bio,
-        photo: user.photo,
-    });
-}
-
 exports.editUser = async (req, res) => {
     await Promise.all(checkSchema(editUserSchema).map(validation => validation.run(req)));
     const errors = validationResult(req);

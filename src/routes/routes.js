@@ -11,7 +11,7 @@ const storage = multer.diskStorage({
     cb(null, 'photos/');
   },
   filename: (req, file, cb) => {
-    if (req.url === '/users/edit') {
+    if (req.url == '/users/edit') {
       cb(null, `user_${req.user.id}_${file.originalname}`);
     }
   }
@@ -24,7 +24,6 @@ router.get('/me', AuthController.getMe);
 
 router.get('/users/bank-account', UsersController.getBankAccount);
 router.put('/users/bank-account', UsersController.editBankAccount);
-router.get('/users/edit', UsersController.getEditUser);
 router.patch('/users/edit', upload.single('photo'), UsersController.editUser);
 router.get('/users/notifications', UsersController.getNotifications);
 router.patch('/users/notifications', UsersController.updateNotifications);
