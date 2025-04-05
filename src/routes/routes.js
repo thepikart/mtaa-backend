@@ -25,7 +25,6 @@ router.get('/me', AuthController.getMe);
 router.get('/users/bank-account', UsersController.getBankAccount);
 router.put('/users/bank-account', UsersController.editBankAccount);
 router.patch('/users/edit', upload.single('photo'), UsersController.editUser);
-router.get('/users/notifications', UsersController.getNotifications);
 router.patch('/users/notifications', UsersController.updateNotifications);
 router.get('/users/:id', UsersController.getUser);
 

@@ -122,18 +122,6 @@ exports.editUser = async (req, res) => {
     });
 }
 
-exports.getNotifications = async (req, res) => {
-    const { id } = req.user;
-
-    const notifications = await db.Notification.findOne({ where: { user_id: id } });
-
-    if (!notifications) {
-        return res.status(404).json({ message: 'Notifications not found' });
-    }
-
-    return res.status(200).json(notifications);
-}
-
 exports.updateNotifications = async (req, res) => {
     const { id } = req.user;
     const { my_attendees, my_comments, my_time, reg_attendees, reg_comments, reg_time } = req.body;
@@ -146,5 +134,5 @@ exports.updateNotifications = async (req, res) => {
 
     await userNotifications.update({ my_attendees, my_comments, my_time, reg_attendees, reg_comments, reg_time });
 
-    return res.status(200).json(userNotifications);
+    return res.status(200).json({ message: 'Notifications updated successfully' });
 }

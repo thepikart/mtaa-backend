@@ -8,9 +8,15 @@ const { CreateAccountSchema } = require('../validators/authValidator');
 exports.login = async (req, res) => {
     const { email, password } = req.body;
 
-    const user = await db.User.findOne({ 
+    const user = await db.User.findOne({
         where: { email },
-        include: [{ model: db.BankAccount }]
+        include: [
+            { model: db.BankAccount },
+            {
+                model: db.Notification,
+                attributes: ['my_attendees', 'my_comments', 'my_time', 'reg_attendees', 'reg_comments', 'reg_time']
+            }
+        ]
     });
 
     if (!user) {
@@ -40,7 +46,8 @@ exports.login = async (req, res) => {
             photo: user.photo,
         },
         token,
-        bankAccount: user.BankAccount ? true : false
+        bankAccount: !!user.BankAccount,
+        notifications: user.Notification,
     });
 }
 
@@ -100,7 +107,12 @@ exports.getMe = async (req, res) => {
 
     const user = await db.User.findByPk(id, {
         attributes: ['id', 'name', 'surname', 'username', 'email', 'bio', 'photo'],
-        include: [{model: db.BankAccount}]
+        include: [
+            { model: db.BankAccount },
+            {
+                model: db.Notification,
+                attributes: ['my_attendees', 'my_comments', 'my_time', 'reg_attendees', 'reg_comments', 'reg_time']
+            }]
     });
 
     if (!user) {
@@ -109,6 +121,7 @@ exports.getMe = async (req, res) => {
 
     return res.status(200).json({
         user: user,
-        bankAccount: user.BankAccount ? true : false
+        bankAccount: !!user.BankAccount,
+        notifications: user.Notification,
     });
 }
