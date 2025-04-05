@@ -8,7 +8,10 @@ const { CreateAccountSchema } = require('../validators/authValidator');
 exports.login = async (req, res) => {
     const { email, password } = req.body;
 
-    const user = await db.User.findOne({ where: { email } });
+    const user = await db.User.findOne({ 
+        where: { email },
+        include: [{ model: db.BankAccount }]
+    });
 
     if (!user) {
         return res.status(400).json({ message: 'Invalid email or password' });
@@ -36,7 +39,8 @@ exports.login = async (req, res) => {
             bio: user.bio,
             photo: user.photo,
         },
-        token
+        token,
+        bankAccount: user.BankAccount ? true : false
     });
 }
 
@@ -95,12 +99,16 @@ exports.getMe = async (req, res) => {
     const { id } = req.user;
 
     const user = await db.User.findByPk(id, {
-        attributes: ['id', 'name', 'surname', 'username', 'email', 'bio', 'photo']
+        attributes: ['id', 'name', 'surname', 'username', 'email', 'bio', 'photo'],
+        include: [{model: db.BankAccount}]
     });
 
     if (!user) {
         return res.status(404).json({ message: 'User not found' });
     }
 
-    return res.status(200).json(user);
+    return res.status(200).json({
+        user: user,
+        bankAccount: user.BankAccount ? true : false
+    });
 }

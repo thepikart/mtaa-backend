@@ -44,25 +44,14 @@ exports.getUser = async (req, res) => {
 
 exports.getBankAccount = async (req, res) => {
     const { id } = req.user;
-    const user = await db.User.findByPk(id);
 
     const bankAccount = await db.BankAccount.findOne({ where: { user_id: id } });
 
     if (!bankAccount) {
-        return res.status(200).json({
-            user: {
-                name: user.name,
-                surname: user.surname,
-            },
-            bankAccount: null
-        });
+        return res.status(404).json({ message: 'Bank account not found' });
     }
 
     return res.status(200).json({
-        user: {
-            name: user.name,
-            surname: user.surname,
-        },
         bankAccount: {
             address: bankAccount.address,
             city: bankAccount.city,
@@ -90,10 +79,10 @@ exports.editBankAccount = async (req, res) => {
 
     if (!created) {
         await bankAccount.update({ address, city, zip, country, number });
-        return res.status(200).json(bankAccount);
+        return res.status(200).json({message: 'Bank account updated successfully' });
     }
     else {
-        return res.status(201).json(bankAccount);
+        return res.status(201).json({message: 'Bank account created successfully' });
     }
 }
 
