@@ -41,13 +41,17 @@ exports.getEventById = async (req, res) => {
 exports.createEvent = async (req, res) => {
   const { title, place, latitude, longitude, date, category, description, price } = req.body;
   const creator_id = req.user && req.user.id;
-  
+
   if (!creator_id) {
     return res.status(401).json({ error: 'User not authenticated' });
   }
-  
-  const photo = req.file ? req.file.path : null;
-  
+
+  var photo = null;
+
+  if (req.file) {
+    photo = req.file.destination + req.file.filename;
+  }
+
   try {
     const event = await db.Event.create({
       title,
@@ -61,7 +65,7 @@ exports.createEvent = async (req, res) => {
       photo,
       creator_id
     });
-    
+
     const eventData = event.toJSON();
     // Broadcast the new event
     const wss = req.app.locals.wss;
@@ -73,7 +77,7 @@ exports.createEvent = async (req, res) => {
         }));
       }
     });
-    
+
     return res.status(201).json(eventData);
   } catch (error) {
     console.error('Error creating event:', error);
@@ -92,7 +96,7 @@ exports.updateEvent = async (req, res) => {
     if (req.user.id !== event.creator_id) {
       return res.status(403).json({ message: 'Not authorized to update this event' });
     }
-    
+
     let updatedData = { ...req.body };
     if (req.file) {
       if (event.photo && fs.existsSync(event.photo)) {
@@ -100,10 +104,10 @@ exports.updateEvent = async (req, res) => {
       }
       updatedData.photo = req.file.path;
     }
-    
+
     await event.update(updatedData);
     const updatedEvent = event.toJSON();
-    
+
     const wss = req.app.locals.wss;
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
@@ -113,7 +117,7 @@ exports.updateEvent = async (req, res) => {
         }));
       }
     });
-    
+
     return res.status(200).json(updatedEvent);
   } catch (error) {
     console.error('Error updating event:', error);
@@ -132,15 +136,15 @@ exports.deleteEvent = async (req, res) => {
     if (req.user.id !== event.creator_id) {
       return res.status(403).json({ message: 'Not authorized to delete this event' });
     }
-    
+
     await db.Comment.destroy({ where: { event_id: id } });
-    
+
     if (event.photo && fs.existsSync(event.photo)) {
       fs.unlinkSync(event.photo);
     }
-    
+
     await event.destroy();
-    
+
     const wss = req.app.locals.wss;
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
@@ -150,7 +154,7 @@ exports.deleteEvent = async (req, res) => {
         }));
       }
     });
-    
+
     return res.status(200).json({ message: 'Event deleted successfully' });
   } catch (error) {
     console.error('Error deleting event:', error);

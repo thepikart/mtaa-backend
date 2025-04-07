@@ -14,6 +14,9 @@ const storage = multer.diskStorage({
     if (req.url === '/users/edit') {
       cb(null, `user_${req.user.id}_${file.originalname}`);
     }
+    else if (req.url === '/events') {
+      cb(null, `event_${req.body.title}_${file.originalname}`);
+    }
   }
 });
 const upload = multer({ storage });
