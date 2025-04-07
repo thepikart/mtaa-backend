@@ -11,7 +11,7 @@ const storage = multer.diskStorage({
     cb(null, 'photos/');
   },
   filename: (req, file, cb) => {
-    if (req.url == '/users/edit') {
+    if (req.url === '/users/edit') {
       cb(null, `user_${req.user.id}_${file.originalname}`);
     }
   }
@@ -30,12 +30,12 @@ router.get('/users/:id', UsersController.getUser);
 
 router.get('/events', EventsController.getAllEvents);
 router.get('/events/:id', EventsController.getEventById);
-router.post('/events', EventsController.createEvent);
-router.put('/events/:id', EventsController.updateEvent);
+router.post('/events', upload.single('photo'), EventsController.createEvent);
+router.put('/events/:id', upload.single('photo'), EventsController.updateEvent);
 router.delete('/events/:id', EventsController.deleteEvent);
-
 
 router.get('/events/:event_id/comments', EventsController.getEventComments);
 router.post('/events/:event_id/comments', EventsController.createEventComment);
+router.delete('/events/:event_id/comments/:comment_id', EventsController.deleteEventComment);
 
 module.exports = router;
