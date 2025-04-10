@@ -252,3 +252,52 @@ exports.deleteEventComment = async (req, res) => {
     return res.status(500).json({ error: 'Failed to delete comment for event' });
   }
 };
+
+
+exports.getUserEventsCreated = async (req, res) => {
+  const { id } = req.params;
+  const limit = parseInt(req.query.limit) || 10;
+  const offset = parseInt(req.query.offset) || 0;
+
+  const createdEvents = await db.Event.findAll({ where: { creator_id: id }, limit, offset });
+  if (!createdEvents) {
+    return res.status(404).json({ message: 'No events found' });
+  }
+  else {
+    return res.status(200).json({
+      createdEvents: createdEvents.map(event => ({
+        id: event.id,
+        title: event.title,
+        place: event.place,
+        date: event.date,
+        description: event.description.split('. ')[0] + '.',
+        photo: event.photo,
+      }))
+    });
+  }
+}
+
+exports.getUserEventsRegistered = async (req, res) => {
+  const { id } = req.params;
+  const limit = parseInt(req.query.limit) || 10;
+  const offset = parseInt(req.query.offset) || 0;
+
+  const registeredEvents = await db.Event.findAll({ include: { model: db.User, where: { id }, attributes: [] }, limit, offset });
+  
+  if (!registeredEvents) {
+    return res.status(404).json({ message: 'No events found' });
+  }
+  else {
+    return res.status(200).json({
+      registeredEvents: registeredEvents.map(event => ({
+        id: event.id,
+        title: event.title,
+        place: event.place,
+        date: event.date,
+        description: event.description.split('. ')[0] + '.',
+        photo: event.photo,
+      }))
+    });
+  }
+
+}

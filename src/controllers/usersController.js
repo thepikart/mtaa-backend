@@ -3,16 +3,16 @@ const { validationResult, checkSchema } = require('express-validator');
 const { BankAccountSchema, editUserSchema } = require('../validators/usersValidator');
 const fs = require('fs');
 
-exports.getUser = async (req, res) => {
+exports.getUserProfile = async (req, res) => {
     const { id } = req.params;
 
-    const user = await db.User.findByPk(id, { include: [db.Event] });
+    const user = await db.User.findByPk(id, { include: [db.Event], limit: 10 });
 
     if (!user) {
         return res.status(404).json({ message: 'User not found' });
     }
 
-    const createdEvents = await db.Event.findAll({ where: { creator_id: id } });
+    const createdEvents = await db.Event.findAll({ where: { creator_id: id }, limit: 10 });
 
     return res.status(200).json({
         user: {
@@ -28,7 +28,7 @@ exports.getUser = async (req, res) => {
             title: event.title,
             place: event.place,
             date: event.date,
-            description: event.description,
+            description: event.description.split('. ')[0] + '.',
             photo: event.photo,
         })),
         goingToEvents: user.Events.map(event => ({
@@ -36,7 +36,7 @@ exports.getUser = async (req, res) => {
             title: event.title,
             place: event.place,
             date: event.date,
-            description: event.description,
+            description: event.description.split('. ')[0] + '.',
             photo: event.photo,
         }))
     });
@@ -79,10 +79,10 @@ exports.editBankAccount = async (req, res) => {
 
     if (!created) {
         await bankAccount.update({ address, city, zip, country, number });
-        return res.status(200).json({message: 'Bank account updated successfully' });
+        return res.status(200).json(bankAccount);
     }
     else {
-        return res.status(201).json({message: 'Bank account created successfully' });
+        return res.status(201).json(bankAccount);
     }
 }
 
@@ -134,5 +134,5 @@ exports.updateNotifications = async (req, res) => {
 
     await userNotifications.update({ my_attendees, my_comments, my_time, reg_attendees, reg_comments, reg_time });
 
-    return res.status(200).json({ message: 'Notifications updated successfully' });
+    return res.status(200).json(userNotifications);
 }

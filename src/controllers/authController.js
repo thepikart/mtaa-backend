@@ -120,8 +120,16 @@ exports.getMe = async (req, res) => {
     }
 
     return res.status(200).json({
-        user: user,
+        user: {
+            id: user.id,
+            name: user.name,
+            surname: user.surname,
+            username: user.username,
+            email: user.email,
+            bio: user.bio,
+            photo: user.photo,
+        },
         bankAccount: !!user.BankAccount,
-        notifications: user.Notification,
+        notifications: user.Notification
     });
 }
