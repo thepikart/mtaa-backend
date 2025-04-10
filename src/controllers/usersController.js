@@ -1,6 +1,6 @@
 const db = require('../database/models');
 const { validationResult, checkSchema } = require('express-validator');
-const { BankAccountSchema, editUserSchema } = require('../validators/usersValidator');
+const { BankAccountSchema, editUserSchema, NotificationSchema } = require('../validators/usersValidator');
 const fs = require('fs');
 
 exports.getUserProfile = async (req, res) => {
@@ -63,10 +63,10 @@ exports.getBankAccount = async (req, res) => {
 }
 
 exports.editBankAccount = async (req, res) => {
-    await Promise.all(checkSchema(BankAccountSchema).map(validation => validation.run(req)));
+    await checkSchema(BankAccountSchema).run(req);
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return res.status(400).json({ message: 'Invalid value' });
+        return res.status(400).json({ message: errors.array()[0].msg });
     }
 
     const { id } = req.user;
@@ -87,10 +87,10 @@ exports.editBankAccount = async (req, res) => {
 }
 
 exports.editUser = async (req, res) => {
-    await Promise.all(checkSchema(editUserSchema).map(validation => validation.run(req)));
+    await checkSchema(editUserSchema).run(req);
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return res.status(400).json({ message: 'Invalid value' });
+        return res.status(400).json({ message: errors.array()[0].msg });
     }
     
     const { name, surname, username, bio } = req.body;
@@ -123,6 +123,12 @@ exports.editUser = async (req, res) => {
 }
 
 exports.updateNotifications = async (req, res) => {
+    await checkSchema(NotificationSchema).run(req);
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ message: errors.array()[0].msg });
+    }
+
     const { id } = req.user;
     const { my_attendees, my_comments, my_time, reg_attendees, reg_comments, reg_time } = req.body;
 

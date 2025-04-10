@@ -1,7 +1,8 @@
 const db = require('../database/models');
 const WebSocket = require('ws');
 const fs = require('fs');
-
+const { PaymentSchema } = require('../validators/eventsValidator');
+const { validationResult, checkSchema } = require('express-validator');
 
 exports.getAllEvents = async (req, res) => {
   try {
@@ -363,7 +364,11 @@ exports.registerForEvent = async (req, res) => {
   }
 
   if (event.price > 0) {
-    const { cardHolder, cardNumber, cvv, expiration } = req.body;
+    await checkSchema(PaymentSchema).run(req);
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ message: errors.array()[0].msg });
+    }
     try {
       await db.UserEvent.create({ user_id: id, event_id });
       return res.status(200).json({ message: 'Payment successful! You are now registered for the event.' });
