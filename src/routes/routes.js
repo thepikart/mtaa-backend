@@ -29,8 +29,9 @@ router.get('/users/bank-account', UsersController.getBankAccount);
 router.put('/users/bank-account', UsersController.editBankAccount);
 router.patch('/users/edit', upload.single('photo'), UsersController.editUser);
 router.patch('/users/notifications', UsersController.updateNotifications);
-router.get('/users/:id', UsersController.getUserProfile);
+router.get('/users/my-events', EventsController.getMyEvents);
 
+router.get('/users/:id', UsersController.getUserProfile);
 router.get('/users/:id/registered', EventsController.getUserEventsRegistered);
 router.get('/users/:id/created', EventsController.getUserEventsCreated);
 

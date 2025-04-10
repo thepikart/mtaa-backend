@@ -282,22 +282,63 @@ exports.getUserEventsRegistered = async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const offset = parseInt(req.query.offset) || 0;
 
-  const registeredEvents = await db.Event.findAll({ include: { model: db.User, where: { id }, attributes: [] }, limit, offset });
-  
+  const registeredEvents = await db.UserEvent.findAll({ where: { user_id: id }, limit, offset, include: [{ model: db.Event }] });
+
   if (!registeredEvents) {
     return res.status(404).json({ message: 'No events found' });
   }
-  else {
-    return res.status(200).json({
-      registeredEvents: registeredEvents.map(event => ({
-        id: event.id,
-        title: event.title,
-        place: event.place,
-        date: event.date,
-        description: event.description.split('. ')[0] + '.',
-        photo: event.photo,
-      }))
-    });
+  return res.status(200).json({
+    registeredEvents: registeredEvents.map(event => ({
+      id: event.Event.id,
+      title: event.Event.title,
+      place: event.Event.place,
+      date: event.Event.date,
+      description: event.Event.description.split('. ')[0] + '.',
+      photo: event.Event.photo,
+    }))
+  });
+
+}
+
+exports.getMyEvents = async (req, res) => {
+  const { id } = req.user;
+  const { startDate, endDate } = req.query;
+
+  if (!startDate || !endDate) {
+    return res.status(400).json({ message: 'Start date and end date are required' });
   }
 
+  const dateRange = { [db.Sequelize.Op.between]: [new Date(startDate), new Date(endDate)] };
+
+  const registeredEvents = await db.UserEvent.findAll({
+    where: { user_id: id },
+    include: [{ model: db.Event, where: { date: dateRange } }]
+  });
+
+  const createdEvents = await db.Event.findAll({
+    where: { creator_id: id, date: dateRange }
+  });
+
+  if (!registeredEvents && !createdEvents) {
+    return res.status(404).json({ message: 'No events found' });
+  }
+  else {
+    const formatEvent = (event, creator) => ({
+      id: event.id,
+      title: event.title,
+      place: event.place,
+      date: event.date,
+      description: event.description.split('. ')[0] + '.',
+      photo: event.photo,
+      creator: creator,
+    });
+
+    const events = [
+      ...registeredEvents.map(({ Event }) => formatEvent(Event, false)),
+      ...createdEvents.map(event => formatEvent(event, true)),
+    ];
+    events.sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    return res.status(200).json({ events });
+  }
 }
