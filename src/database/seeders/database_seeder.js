@@ -61,7 +61,6 @@ module.exports = {
                 userEvents.push({
                     user_id: user.id,
                     event_id: faker.helpers.arrayElement(eventsDB).id,
-                    paid: faker.datatype.boolean(),
                 });
             }
             await queryInterface.bulkInsert('UserEvents', userEvents);

@@ -45,4 +45,7 @@ router.get('/events/:event_id/comments', EventsController.getEventComments);
 router.post('/events/:event_id/comments', EventsController.createEventComment);
 router.delete('/events/:event_id/comments/:comment_id', EventsController.deleteEventComment);
 
+router.post('/events/:event_id/register', EventsController.registerForEvent);
+router.delete('/events/:event_id/cancel', EventsController.cancelEventRegistration);
+
 module.exports = router;

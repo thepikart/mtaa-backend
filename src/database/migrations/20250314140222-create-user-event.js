@@ -16,9 +16,6 @@ module.exports = {
       event_id: {
         type: Sequelize.INTEGER,
         references: { model: "Events", key: "id"}
-      },
-      paid: {
-        type: Sequelize.BOOLEAN
       }
     });
   },

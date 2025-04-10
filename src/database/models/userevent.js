@@ -14,9 +14,7 @@ module.exports = (sequelize, DataTypes) => {
       UserEvent.belongsTo(models.User, { foreignKey: 'user_id' });
     }
   }
-  UserEvent.init({
-    paid: DataTypes.BOOLEAN
-  }, {
+  UserEvent.init({}, {
     sequelize,
     modelName: 'UserEvent',
     timestamps: false,

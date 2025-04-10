@@ -338,7 +338,80 @@ exports.getMyEvents = async (req, res) => {
       ...createdEvents.map(event => formatEvent(event, true)),
     ];
     events.sort((a, b) => new Date(a.date) - new Date(b.date));
-    
+
     return res.status(200).json({ events });
+  }
+}
+
+exports.registerForEvent = async (req, res) => {
+  const { id } = req.user;
+  const { event_id } = req.params;
+
+  const event = await db.Event.findByPk(event_id);
+
+  if (!event) {
+    return res.status(404).json({ message: 'Event not found' });
+  }
+
+  if (event.creator_id === id) {
+    return res.status(400).json({ message: 'You are the creator of this event' });
+  }
+
+  const registration = await db.UserEvent.findOne({ where: { user_id: id, event_id } });
+  if (registration) {
+    return res.status(400).json({ message: 'You are already registered for this event' });
+  }
+
+  if (event.price > 0) {
+    const { cardHolder, cardNumber, cvv, expiration } = req.body;
+    try {
+      await db.UserEvent.create({ user_id: id, event_id });
+      return res.status(200).json({ message: 'Payment successful! You are now registered for the event.' });
+    }
+    catch (error) {
+      return res.status(500).json({ message: 'Payment failed.' });
+    }
+  }
+  else {
+    try {
+      await db.UserEvent.create({ user_id: id, event_id });
+      return res.status(200).json({ message: 'You are now registered for the event.' });
+    }
+    catch (error) {
+      return res.status(500).json({ message: 'Failed to register for the event.' });
+    }
+  }
+}
+
+exports.cancelEventRegistration = async (req, res) => {
+  const { id } = req.user;
+  const { event_id } = req.params;
+
+  const event = await db.Event.findByPk(event_id);
+
+  if (!event) {
+    return res.status(404).json({ message: 'Event not found' });
+  }
+
+  if (event.creator_id === id) {
+    return res.status(400).json({ message: 'As the creator of this event, you cannot cancel your registration. You can delete the event instead.' });
+  }
+
+  const registration = await db.UserEvent.findOne({ where: { user_id: id, event_id } });
+  if (!registration) {
+    return res.status(404).json({ message: 'You are not registered for this event' });
+  }
+
+  try {
+    await registration.destroy();
+    if (event.price > 0) {
+      return res.status(200).json({ message: 'You have successfully canceled your registration for the event. A refund will be processed shortly.' });
+    }
+    else {
+      return res.status(200).json({ message: 'You have successfully canceled your registration for the event.' });
+    }
+  }
+  catch (error) {
+    return res.status(500).json({ message: 'Failed to cancel registration.' });
   }
 }
