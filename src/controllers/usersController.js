@@ -6,13 +6,11 @@ const fs = require('fs');
 exports.getUserProfile = async (req, res) => {
     const { id } = req.params;
 
-    const user = await db.User.findByPk(id, { include: [db.Event], limit: 10 });
+    const user = await db.User.findByPk(id);
 
     if (!user) {
         return res.status(404).json({ message: 'User not found' });
     }
-
-    const createdEvents = await db.Event.findAll({ where: { creator_id: id }, limit: 10 });
 
     return res.status(200).json({
         user: {
@@ -22,23 +20,7 @@ exports.getUserProfile = async (req, res) => {
             username: user.username,
             bio: user.bio,
             photo: user.photo,
-        },
-        createdEvents: createdEvents.map(event => ({
-            id: event.id,
-            title: event.title,
-            place: event.place,
-            date: event.date,
-            description: event.description.split('. ')[0] + '.',
-            photo: event.photo,
-        })),
-        goingToEvents: user.Events.map(event => ({
-            id: event.id,
-            title: event.title,
-            place: event.place,
-            date: event.date,
-            description: event.description.split('. ')[0] + '.',
-            photo: event.photo,
-        }))
+        }
     });
 }
 

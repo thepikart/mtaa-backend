@@ -1,9 +1,10 @@
-
 const db = require('../database/models');
 const WebSocket = require('ws');
 const fs = require('fs');
 const { Op } = db.Sequelize;
 const path = require('path');
+const { PaymentSchema } = require('../validators/eventsValidator');
+const { validationResult, checkSchema } = require('express-validator');
 
 const allowedCategories = ['art', 'technology', 'sports', 'music', 'politics', 'other'];
 
@@ -12,7 +13,6 @@ exports.getAllEvents = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit, 10) || 10;
     const offset = parseInt(req.query.offset, 10) || 0;
-
 
     const events = await db.Event.findAll({
       attributes: ['id', 'title', 'photo', 'date', 'description', 'price'],
@@ -44,7 +44,6 @@ exports.getAllEvents = async (req, res) => {
 };
 
 
-
 exports.getEventById = async (req, res) => {
   const { id } = req.params;
   try {
@@ -58,29 +57,22 @@ exports.getEventById = async (req, res) => {
       attributes: ['id', 'photo', 'username']
     });
 
-    const comments = await db.Comment.findAll({
-      where: { event_id: id }
-    });
-
-    const oneSentence = event.description
-      ? event.description.split('. ')[0] + '.'
-      : '';
-
     const response = {
       id: event.id,
       name: event.title,
       photo: event.photo,
       date: event.date,
-      description: oneSentence,
+      description: event.description,
       price: event.price,
+      place: event.place,
+      category: event.category,
       creator: creator
         ? {
-            id: creator.id,
-            name: creator.username,
-            photo: creator.photo
-          }
-        : null,
-      comments: comments || []
+          id: creator.id,
+          name: creator.username,
+          photo: creator.photo
+        }
+        : null
     };
 
     return res.status(200).json(response);
@@ -94,16 +86,16 @@ exports.getEventById = async (req, res) => {
 exports.createEvent = async (req, res) => {
   const { title, place, latitude, longitude, date, category, description, price } = req.body;
   const creator_id = req.user && req.user.id;
-  
+
   if (!creator_id) {
     return res.status(401).json({ error: 'User not authenticated' });
   }
-  
+
   let photoPath = null;
   if (req.file) {
     photoPath = req.file.path;
   }
-  
+
   try {
 
     const event = await db.Event.create({
@@ -111,7 +103,7 @@ exports.createEvent = async (req, res) => {
       photo: photoPath,
       creator_id
     });
-    
+
 
     if (req.file) {
       const ext = path.extname(req.file.originalname);
@@ -120,7 +112,7 @@ exports.createEvent = async (req, res) => {
       fs.renameSync(req.file.path, newFilePath);
       await event.update({ photo: newFilePath });
     }
-    
+
     const eventData = event.toJSON();
     const wss = req.app.locals.wss;
     wss.clients.forEach((client) => {
@@ -131,7 +123,7 @@ exports.createEvent = async (req, res) => {
         }));
       }
     });
-    
+
     return res.status(201).json(eventData);
   } catch (error) {
     console.error('Error creating event:', error);
@@ -150,7 +142,7 @@ exports.updateEvent = async (req, res) => {
     if (req.user.id !== event.creator_id) {
       return res.status(403).json({ message: 'Not authorized to update this event' });
     }
-    
+
     let updatedData = { ...req.body };
 
     if (req.file) {
@@ -158,19 +150,19 @@ exports.updateEvent = async (req, res) => {
       const ext = path.extname(req.file.originalname);
       const newFilename = `${event.id}_photo${ext}`;
       const newFilePath = path.join(req.file.destination, newFilename);
-      
+
       if (event.photo && fs.existsSync(event.photo)) {
         fs.unlinkSync(event.photo);
       }
-      
+
       fs.renameSync(req.file.path, newFilePath);
 
       updatedData.photo = newFilePath;
     }
-    
+
     await event.update(updatedData);
     const updatedEvent = event.toJSON();
-    
+
     const wss = req.app.locals.wss;
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
@@ -180,7 +172,7 @@ exports.updateEvent = async (req, res) => {
         }));
       }
     });
-    
+
     return res.status(200).json(updatedEvent);
   } catch (error) {
     console.error('Error updating event:', error);
@@ -259,15 +251,15 @@ exports.createEventComment = async (req, res) => {
   const { event_id } = req.params;
   const user_id = req.user && req.user.id;
   const { content } = req.body;
-  
+
   if (!user_id || !content) {
     return res.status(400).json({ error: 'Missing content or user not authenticated' });
   }
-  
+
   if (content.length > 150) {
     return res.status(400).json({ error: 'Comment must be 150 characters or less' });
   }
-  
+
   try {
     const event = await db.Event.findByPk(event_id);
     if (!event) {
@@ -314,7 +306,7 @@ exports.deleteEventComment = async (req, res) => {
       return res.status(403).json({ error: 'Not authorized to delete this comment' });
     }
     await comment.destroy();
-    
+
     const wss = req.app.locals.wss;
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
@@ -324,7 +316,7 @@ exports.deleteEventComment = async (req, res) => {
         }));
       }
     });
-    
+
     return res.status(200).json({ message: 'Comment deleted successfully' });
   } catch (error) {
     console.error('Error deleting comment:', error);
@@ -341,7 +333,8 @@ exports.getUserEventsCreated = async (req, res) => {
     const createdEvents = await db.Event.findAll({ where: { creator_id: id }, limit, offset });
     if (!createdEvents) {
       return res.status(404).json({ message: 'No events found' });
-    } else {
+    }
+    else {
       return res.status(200).json({
         createdEvents: createdEvents.map(event => ({
           id: event.id,
@@ -353,11 +346,12 @@ exports.getUserEventsCreated = async (req, res) => {
         }))
       });
     }
-  } catch (error) {
-    console.error('Error fetching user created events:', error);
+  }
+  catch (error) {
     return res.status(500).json({ error: 'Failed to fetch user events' });
   }
 };
+
 
 exports.getUserEventsRegistered = async (req, res) => {
   const { id } = req.params;
@@ -385,8 +379,8 @@ exports.getUserEventsRegistered = async (req, res) => {
         photo: event.Event.photo,
       }))
     });
-  } catch (error) {
-    console.error('Error fetching registered events:', error);
+  }
+  catch (error) {
     return res.status(500).json({ error: 'Failed to fetch registered events' });
   }
 };
@@ -414,7 +408,8 @@ exports.getMyEvents = async (req, res) => {
 
     if (!registeredEvents && !createdEvents) {
       return res.status(404).json({ message: 'No events found' });
-    } else {
+    }
+    else {
       const formatEvent = (event, creator) => ({
         id: event.id,
         title: event.title,
@@ -433,8 +428,8 @@ exports.getMyEvents = async (req, res) => {
 
       return res.status(200).json({ events });
     }
-  } catch (error) {
-    console.error('Error fetching my events:', error);
+  }
+  catch (error) {
     return res.status(500).json({ error: 'Failed to fetch my events' });
   }
 };
@@ -457,15 +452,21 @@ exports.registerForEvent = async (req, res) => {
       return res.status(400).json({ message: 'You are already registered for this event' });
     }
     if (event.price > 0) {
+      await checkSchema(PaymentSchema).run(req);
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ message: errors.array()[0].msg });
+      }
 
       await db.UserEvent.create({ user_id: id, event_id });
       return res.status(200).json({ message: 'Payment successful! You are now registered for the event.' });
-    } else {
+    }
+    else {
       await db.UserEvent.create({ user_id: id, event_id });
       return res.status(200).json({ message: 'You are now registered for the event.' });
     }
-  } catch (error) {
-    console.error('Error registering for event:', error);
+  }
+  catch (error) {
     return res.status(500).json({ message: 'Failed to register for the event.' });
   }
 };
@@ -490,11 +491,12 @@ exports.cancelEventRegistration = async (req, res) => {
     await registration.destroy();
     if (event.price > 0) {
       return res.status(200).json({ message: 'You have successfully canceled your registration for the event. A refund will be processed shortly.' });
-    } else {
+    }
+    else {
       return res.status(200).json({ message: 'You have successfully canceled your registration for the event.' });
     }
-  } catch (error) {
-    console.error('Error canceling event registration:', error);
+  }
+  catch (error) {
     return res.status(500).json({ message: 'Failed to cancel registration.' });
   }
 };
@@ -553,7 +555,7 @@ exports.getEventsByCategory = async (req, res) => {
       attributes: ['id', 'title', 'photo', 'date', 'description', 'price'],
       limit,
       offset,
-      order: [['date', 'DESC']],
+      order: [['date', 'ASC']],
     });
     const simplified = events.map((event) => {
       const oneSentence = event.description
@@ -600,7 +602,6 @@ exports.getEventAttendees = async (req, res) => {
       userId: ue.User.id,
       username: ue.User.username,
       photo: ue.User.photo,
-      paid: ue.paid,
     }));
 
     return res.status(200).json({ attendees });
@@ -621,7 +622,7 @@ exports.searchEvents = async (req, res) => {
 
     const andConditions = keywords.map(word => ({
       [Op.or]: [
-        { title:       { [Op.iLike]: `%${word}%` } },
+        { title: { [Op.iLike]: `%${word}%` } },
         { description: { [Op.iLike]: `%${word}%` } },
       ]
     }));
@@ -631,7 +632,7 @@ exports.searchEvents = async (req, res) => {
       },
       attributes: ['id', 'title', 'photo', 'date', 'description', 'price'],
       limit: 20,
-      order: [['date', 'DESC']]
+      order: [['date', 'ASC']]
     });
 
     const simplified = events.map(event => {
