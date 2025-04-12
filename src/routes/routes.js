@@ -11,14 +11,17 @@ const storage = multer.diskStorage({
     cb(null, 'photos/');
   },
   filename: (req, file, cb) => {
-    if (req.url === '/users/edit') {
+    if (req.url.startsWith('/users/edit')) {
       cb(null, `user_${req.user.id}_${file.originalname}`);
-    }
-    else if (req.url === '/events') {
-      cb(null, `event_${req.body.title}_${file.originalname}`);
+    } 
+    else if (req.url.startsWith('/events')) {
+      cb(null, `event_${Date.now()}_${file.originalname}`);
+    } else {
+      cb(null, `file_${Date.now()}_${file.originalname}`);
     }
   }
 });
+
 const upload = multer({ storage });
 
 router.post('/login', AuthController.login);
@@ -35,15 +38,24 @@ router.get('/users/:id', UsersController.getUserProfile);
 router.get('/users/:id/registered', EventsController.getUserEventsRegistered);
 router.get('/users/:id/created', EventsController.getUserEventsCreated);
 
+router.get('/events/search', EventsController.searchEvents);
+router.get('/events/upcoming', EventsController.getUpcomingEvents);
 router.get('/events', EventsController.getAllEvents);
 router.get('/events/:id', EventsController.getEventById);
 router.post('/events', upload.single('photo'), EventsController.createEvent);
 router.put('/events/:id', upload.single('photo'), EventsController.updateEvent);
 router.delete('/events/:id', EventsController.deleteEvent);
+router.get('/events/:id/attendees', EventsController.getEventAttendees);
+
+
+
+router.get('/events/category/:cat', EventsController.getEventsByCategory);
 
 router.get('/events/:event_id/comments', EventsController.getEventComments);
 router.post('/events/:event_id/comments', EventsController.createEventComment);
 router.delete('/events/:event_id/comments/:comment_id', EventsController.deleteEventComment);
+
+
 
 router.post('/events/:event_id/register', EventsController.registerForEvent);
 router.delete('/events/:event_id/cancel', EventsController.cancelEventRegistration);
