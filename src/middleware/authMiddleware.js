@@ -14,7 +14,7 @@ exports.verifyUser = (req, res, next) => {
         next();
     }
     catch (err) {
-        return res.status(400).json({ message: 'Invalid token' });
+        return res.status(401).json({ message: 'Access denied' });
     }
 
 }

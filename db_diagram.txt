@@ -11,6 +11,7 @@ Table user {
 
 Table event {
   id integer [pk]
+  creator_id integer [not null]
   title varchar [not null]
   place varchar [not null]
   latitude float [not null]
@@ -19,7 +20,6 @@ Table event {
   category category [not null]
   description text [not null]
   price float
-  creator_id integer [not null]
   photo varchar
 }
 
@@ -35,7 +35,6 @@ Enum category {
 Table user_events {
   user_id integer [not null]
   event_id integer [not null]
-  paid boolean
 }
 
 Table comment {
