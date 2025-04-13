@@ -38,6 +38,9 @@ router.get('/users/:id', UsersController.getUserProfile);
 router.get('/users/:id/registered', EventsController.getUserEventsRegistered);
 router.get('/users/:id/created', EventsController.getUserEventsCreated);
 
+
+router.get('/events/recommended', EventsController.getRecommendedEvents);
+router.get('/events/near', EventsController.getEventsNearYou);
 router.get('/events/search', EventsController.searchEvents);
 router.get('/events/upcoming', EventsController.getUpcomingEvents);
 router.get('/events', EventsController.getAllEvents);
