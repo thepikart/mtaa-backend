@@ -10,6 +10,9 @@ const sequelize = db.sequelize;
 const allowedCategories = ['art', 'technology', 'sports', 'music', 'politics', 'other'];
 
 
+/**
+ * Returns a list of all events with optional pagination.
+ */
 exports.getAllEvents = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit, 10) || 10;
@@ -44,7 +47,9 @@ exports.getAllEvents = async (req, res) => {
   }
 };
 
-
+/**
+ * Retrieves a single event by its ID.
+ */
 exports.getEventById = async (req, res) => {
   const { id } = req.params;
   try {
@@ -83,7 +88,9 @@ exports.getEventById = async (req, res) => {
   }
 };
 
-
+/**
+ * Creates a new event, performing necessary validations and checks.
+ */
 exports.createEvent = async (req, res) => {
   var failed = false;
   const { title, place, latitude, longitude, date, category, description, price } = req.body;
@@ -178,7 +185,9 @@ exports.createEvent = async (req, res) => {
   }
 };
 
-
+/**
+ * Updates an existing event, if the requestor is the creator.
+ */
 exports.updateEvent = async (req, res) => {
   const { id } = req.params;
   var failed = false;
@@ -281,7 +290,9 @@ exports.updateEvent = async (req, res) => {
 };
 
 
-
+/**
+ * Deletes an existing event, along with its comments and registrations, if the requestor is the creator.
+ */
 exports.deleteEvent = async (req, res) => {
   const { id } = req.params;
   try {
@@ -320,7 +331,9 @@ exports.deleteEvent = async (req, res) => {
   }
 };
 
-
+/**
+ * Retrieves comments for a specific event, supporting pagination.
+ */
 exports.getEventComments = async (req, res) => {
   const { event_id } = req.params;
   const limit = parseInt(req.query.limit, 10) || 10;
@@ -347,7 +360,9 @@ exports.getEventComments = async (req, res) => {
   }
 };
 
-
+/**
+ * Creates a new comment on a specific event (limited to 150 characters).
+ */
 exports.createEventComment = async (req, res) => {
   const { event_id } = req.params;
   const user_id = req.user && req.user.id;
@@ -392,7 +407,9 @@ exports.createEventComment = async (req, res) => {
   }
 };
 
-
+/**
+ * Deletes a comment if the requestor is its author.
+ */
 exports.deleteEventComment = async (req, res) => {
   const { event_id, comment_id } = req.params;
   const user_id = req.user && req.user.id;
@@ -425,7 +442,9 @@ exports.deleteEventComment = async (req, res) => {
   }
 };
 
-
+/**
+ * Fetches events created by a specific user, supporting pagination.
+ */
 exports.getUserEventsCreated = async (req, res) => {
   const { id } = req.params;
   const limit = parseInt(req.query.limit) || 10;
@@ -453,7 +472,9 @@ exports.getUserEventsCreated = async (req, res) => {
   }
 };
 
-
+/**
+ * Fetches events a specific user is registered for, supporting pagination.
+ */
 exports.getUserEventsRegistered = async (req, res) => {
   const { id } = req.params;
   const limit = parseInt(req.query.limit) || 10;
@@ -486,7 +507,9 @@ exports.getUserEventsRegistered = async (req, res) => {
   }
 };
 
-
+/**
+ * Retrieves events for the authenticated user—both created and registered—within a given date range.
+ */
 exports.getMyEvents = async (req, res) => {
   const { id } = req.user;
   const { startDate, endDate } = req.query;
@@ -535,7 +558,9 @@ exports.getMyEvents = async (req, res) => {
   }
 };
 
-
+/**
+ * Registers the user for an event, optionally requiring payment if the event has a price.
+ */
 exports.registerForEvent = async (req, res) => {
   const { id } = req.user;
   const { event_id } = req.params;
@@ -572,7 +597,9 @@ exports.registerForEvent = async (req, res) => {
   }
 };
 
-
+/**
+ * Cancels the user’s registration for an event, as long as they are not the creator.
+ */
 exports.cancelEventRegistration = async (req, res) => {
   const { id } = req.user;
   const { event_id } = req.params;
@@ -602,7 +629,9 @@ exports.cancelEventRegistration = async (req, res) => {
   }
 };
 
-
+/**
+ * Fetches up to 10 upcoming events (date >= today), sorted by date.
+ */
 exports.getUpcomingEvents = async (req, res) => {
   try {
     const today = new Date();
@@ -638,6 +667,9 @@ exports.getUpcomingEvents = async (req, res) => {
   }
 };
 
+/**
+ * Fetches events by a specified category, supporting pagination.
+ */
 exports.getEventsByCategory = async (req, res) => {
   try {
     const { cat } = req.params;
@@ -679,7 +711,9 @@ exports.getEventsByCategory = async (req, res) => {
   }
 };
 
-
+/**
+ * Retrieves all attendees (users) registered for a specific event.
+ */
 exports.getEventAttendees = async (req, res) => {
   const { id } = req.params;
 
@@ -712,6 +746,9 @@ exports.getEventAttendees = async (req, res) => {
   }
 };
 
+/**
+ * Searches events by keyword(s) in title or description (case-insensitive).
+ */
 exports.searchEvents = async (req, res) => {
   try {
     const searchTerm = req.query.q;
@@ -757,6 +794,9 @@ exports.searchEvents = async (req, res) => {
   }
 };
 
+/**
+ * Finds events near specified coordinates based on a radius in kilometers.
+ */
 exports.getEventsNearYou = async (req, res) => {
   try {
     const KILOMETERS_PER_DEGREE_LAT = 111;
@@ -813,6 +853,10 @@ exports.getEventsNearYou = async (req, res) => {
   }
 };
 
+/**
+ * Suggests events for the user based on their most frequently attended category;
+ * if none are found or the user has no history, returns random events.
+ */
 exports.getRecommendedEvents = async (req, res) => {
   try {
     const userId = req.user.id;
