@@ -69,39 +69,53 @@ exports.editBankAccount = async (req, res) => {
 }
 
 exports.editUser = async (req, res) => {
-    await checkSchema(editUserSchema).run(req);
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ message: errors.array()[0].msg });
-    }
-    
-    const { name, surname, username, bio } = req.body;
-    const { id } = req.user;
-    const user = await db.User.findByPk(id);
+    var failed = false;
+    try {
+        await checkSchema(editUserSchema).run(req);
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            failed = true;
+            return res.status(400).json({ message: errors.array()[0].msg });
+        }
 
-    if (username) {
-        const usernameExists = await db.User.findOne({ where: { username } });
-        if (usernameExists && usernameExists.id !== id) {
-            return res.status(400).json({ message: 'Username already exists' });
+        const { name, surname, username, bio } = req.body;
+        const { id } = req.user;
+        const user = await db.User.findByPk(id);
+
+        if (username) {
+            const usernameExists = await db.User.findOne({ where: { username } });
+            if (usernameExists && usernameExists.id !== id) {
+                failed = true;
+                return res.status(400).json({ message: 'Username already exists' });
+            }
+        }
+
+        var photo = user.photo;
+        if (req.file) {
+            if (user.photo && fs.existsSync(user.photo)) {
+                fs.unlinkSync(user.photo);
+            }
+            photo = req.file.destination + req.file.filename;
+        }
+
+        await user.update({ name, surname, username, bio, photo });
+        return res.status(200).json({
+            name: user.name,
+            surname: user.surname,
+            username: user.username,
+            bio: user.bio,
+            photo: user.photo,
+        });
+    }
+    catch (err) {
+        failed = true;
+        return res.status(500).json({ message: 'Error updating user information' });
+    }
+    finally {
+        if (failed && req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
         }
     }
-
-    var photo = user.photo;
-    if (req.file) {
-        if (user.photo && fs.existsSync(user.photo)) {
-            fs.unlinkSync(user.photo);
-        }
-        photo = req.file.destination + req.file.filename;
-    }
-
-    await user.update({ name, surname, username, bio, photo });
-    return res.status(200).json({
-        name: user.name,
-        surname: user.surname,
-        username: user.username,
-        bio: user.bio,
-        photo: user.photo,
-    });
 }
 
 exports.updateNotifications = async (req, res) => {

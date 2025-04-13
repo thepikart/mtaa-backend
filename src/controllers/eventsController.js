@@ -85,37 +85,45 @@ exports.getEventById = async (req, res) => {
 
 
 exports.createEvent = async (req, res) => {
+  var failed = false;
   const { title, place, latitude, longitude, date, category, description, price } = req.body;
   const creator_id = req.user && req.user.id;
 
   if (!creator_id) {
+    failed = true;
     return res.status(401).json({ error: 'User not authenticated' });
   }
 
   if (!title || !place || !latitude || !longitude || !date || !category || !description) {
+    failed = true;
     return res.status(400).json({ error: 'All fields (title, place, latitude, longitude, date, category, description) must be provided.' });
   }
 
   if (!allowedCategories.includes(category.toLowerCase())) {
+    failed = true;
     return res.status(400).json({ error: `Invalid category. Allowed: ${allowedCategories.join(', ')}.` });
   }
 
   const eventDate = new Date(date);
   if (isNaN(eventDate.getTime())) {
+    failed = true;
     return res.status(400).json({ error: 'Invalid date provided.' });
   }
   if (eventDate < new Date()) {
+    failed = true;
     return res.status(400).json({ error: 'Event date must be in the future.' });
   }
 
   if (Number(price) > 0) {
     const bankAccount = await db.BankAccount.findOne({ where: { user_id: creator_id } });
     if (!bankAccount) {
+      failed = true;
       return res.status(400).json({ error: 'Paid events require a bank account. Please set up your bank account first.' });
     }
   }
 
   if (Number(price) < 0) {
+    failed = true;
     return res.status(400).json({ error: 'Enter a valid price.' });
 }
 
@@ -126,6 +134,7 @@ exports.createEvent = async (req, res) => {
     }
   });
   if (duplicateEvent) {
+    failed = true;
     return res.status(400).json({ error: 'An event with the same title and date already exists.' });
   }
 
@@ -159,39 +168,51 @@ exports.createEvent = async (req, res) => {
     return res.status(201).json(event);
   } catch (error) {
     console.error('Error creating event:', error);
+    failed = true;
     return res.status(500).json({ error: 'Failed to create event' });
+  }
+  finally {
+    if (failed && req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
   }
 };
 
 
 exports.updateEvent = async (req, res) => {
   const { id } = req.params;
-  
+  var failed = false;
   try {
     const event = await db.Event.findByPk(id);
     if (!event) {
+      failed = true;
       return res.status(404).json({ message: 'Event not found' });
     }
     if (req.user.id !== event.creator_id) {
+      failed = true;
       return res.status(403).json({ message: 'Not authorized to update this event' });
     }
 
     const { title, place, latitude, longitude, date, category, description, price } = req.body;
 
     if (!title || !place || !latitude || !longitude || !date || !category || !description) {
+      failed = true;
       return res.status(400).json({ error: 'All fields (title, place, latitude, longitude, date, category, description) must be provided.' });
     }
 
     if (category && !allowedCategories.includes(category.toLowerCase())) {
+      failed = true;
       return res.status(400).json({ error: `Invalid category. Allowed: ${allowedCategories.join(', ')}.` });
     }
 
     if (date) {
       const newDate = new Date(date);
       if (isNaN(newDate.getTime())) {
+        failed = true;
         return res.status(400).json({ error: 'Invalid date provided.' });
       }
       if (newDate < new Date()) {
+        failed = true;
         return res.status(400).json({ error: 'Event date must be in the future.' });
       }
       req.body.date = newDate;
@@ -208,6 +229,7 @@ exports.updateEvent = async (req, res) => {
         }
       });
       if (duplicateEvent) {
+        failed = true;
         return res.status(400).json({ error: 'An event with the same title and date already exists.' });
       }
     }
@@ -215,13 +237,15 @@ exports.updateEvent = async (req, res) => {
     if (price && Number(price) > 0) {
       const bankAccount = await db.BankAccount.findOne({ where: { user_id: req.user.id } });
       if (!bankAccount) {
+        failed = true;
         return res.status(400).json({ error: 'Paid events require a bank account.' });
       }
     }
     if (price && Number(price) < 0) {
+        failed = true;
         return res.status(400).json({ error: 'Enter a valid price.' });
     }
-
+    
     if (req.file) {
       if (event.photo && fs.existsSync(event.photo)) {
         fs.unlinkSync(event.photo);
@@ -246,7 +270,13 @@ exports.updateEvent = async (req, res) => {
     return res.status(200).json(updatedEvent);
   } catch (error) {
     console.error('Error updating event:', error);
+    failed = true;
     return res.status(500).json({ error: 'Failed to update event' });
+  }
+  finally {
+    if (failed && req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
   }
 };
 
@@ -755,7 +785,7 @@ exports.getEventsNearYou = async (req, res) => {
           [Op.between]: [lon - lonDelta, lon + lonDelta]
         }
       },
-      attributes: ['id', 'title', 'photo', 'date', 'description', 'price'],
+      attributes: ['id', 'title', 'photo', 'date', 'description', 'price', 'place', 'latitude', 'longitude'],
       order: [['date', 'ASC']]
     });
 
@@ -769,7 +799,10 @@ exports.getEventsNearYou = async (req, res) => {
         photo: event.photo,
         date: event.date,
         price: event.price,
-        description: oneSentence
+        description: oneSentence,
+        place: event.place,
+        latitude: event.latitude,
+        longitude: event.longitude,
       };
     });
 
@@ -797,7 +830,7 @@ exports.getRecommendedEvents = async (req, res) => {
     if (userEvents.length === 0) {
 
       const fallbackEvents = await db.Event.findAll({
-        attributes: ['id', 'title', 'photo', 'date', 'description', 'price'],
+        attributes: ['id', 'title', 'photo', 'date', 'description', 'price', 'place'],
         limit: 10,
         order: sequelize.literal('RANDOM()'),
       });
@@ -826,7 +859,7 @@ exports.getRecommendedEvents = async (req, res) => {
     const userEventIds = userEvents.map(ue => ue.Event.id);
 
     const recommendedEvents = await db.Event.findAll({
-      attributes: ['id', 'title', 'photo', 'date', 'description', 'price'],
+      attributes: ['id', 'title', 'photo', 'date', 'description', 'price', 'place', 'category'],
       where: {
         category: topCategory,
         id: { [Op.notIn]: userEventIds },
@@ -837,7 +870,7 @@ exports.getRecommendedEvents = async (req, res) => {
 
     if (recommendedEvents.length === 0) {
       const fallbackEvents = await db.Event.findAll({
-        attributes: ['id', 'title', 'photo', 'date', 'description', 'price'],
+        attributes: ['id', 'title', 'photo', 'date', 'description', 'price', 'place'],
         limit: 10,
         order: sequelize.literal('RANDOM()'),
       });
@@ -864,6 +897,8 @@ function formatEvent(event) {
     date: event.date,
     price: event.price,
     description: oneSentence,
+    place: event.place,
+    category: event.category,
   };
 }
 
