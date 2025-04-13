@@ -5,6 +5,8 @@ require('dotenv').config();
 const { validationResult, checkSchema } = require('express-validator');
 const { CreateAccountSchema, LoginSchema } = require('../validators/authValidator');
 
+// handles user login
+// validates input, finds user in db, checks password, generates token for authentication and returns user data and token
 exports.login = async (req, res) => {
     await checkSchema(LoginSchema).run(req);
     const errors = validationResult(req);
@@ -57,6 +59,10 @@ exports.login = async (req, res) => {
     });
 }
 
+
+// handles user account creation
+// validates input, checks if email and username already exist in db, hashes password
+// creates user in db, creates notification for user, generates token for authentication and returns user data and token
 exports.createAccount = async (req, res) => {
     await checkSchema(CreateAccountSchema).run(req);
     const errors = validationResult(req);
@@ -108,6 +114,9 @@ exports.createAccount = async (req, res) => {
     });
 }
 
+
+// handles logged-in user data retrieval
+// retrieves user data from db for authenticated user
 exports.getMe = async (req, res) => {
     const { id } = req.user;
 

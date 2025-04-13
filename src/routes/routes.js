@@ -6,6 +6,7 @@ const AuthController = require('../controllers/authController');
 const UsersController = require('../controllers/usersController');
 const EventsController = require('../controllers/eventsController');
 
+// sets up multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, 'photos/');
@@ -50,14 +51,11 @@ router.put('/events/:id', upload.single('photo'), EventsController.updateEvent);
 router.delete('/events/:id', EventsController.deleteEvent);
 router.get('/events/:id/attendees', EventsController.getEventAttendees);
 
-
-
 router.get('/events/category/:cat', EventsController.getEventsByCategory);
 
 router.get('/events/:event_id/comments', EventsController.getEventComments);
 router.post('/events/:event_id/comments', EventsController.createEventComment);
 router.delete('/events/:event_id/comments/:comment_id', EventsController.deleteEventComment);
-
 
 
 router.post('/events/:event_id/register', EventsController.registerForEvent);

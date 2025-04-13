@@ -3,6 +3,9 @@ const { validationResult, checkSchema } = require('express-validator');
 const { BankAccountSchema, editUserSchema, NotificationSchema } = require('../validators/usersValidator');
 const fs = require('fs');
 
+
+// handles user profile retrieval
+// retrieves user data from db for profile page based on user id
 exports.getUserProfile = async (req, res) => {
     const { id } = req.params;
 
@@ -24,6 +27,8 @@ exports.getUserProfile = async (req, res) => {
     });
 }
 
+// handles retrieval of user's bank account information
+// retrieves bank account data from db for authenticated user
 exports.getBankAccount = async (req, res) => {
     const { id } = req.user;
 
@@ -44,6 +49,8 @@ exports.getBankAccount = async (req, res) => {
     });
 }
 
+// handles bank account information update
+// validates input data and updates bank account information in db for authenticated user, returns updated data
 exports.editBankAccount = async (req, res) => {
     await checkSchema(BankAccountSchema).run(req);
     const errors = validationResult(req);
@@ -68,6 +75,8 @@ exports.editBankAccount = async (req, res) => {
     }
 }
 
+// handles user profile update
+// validates input data, checks if username already exists in db, updates user information in db for authenticated user, returns updated data
 exports.editUser = async (req, res) => {
     var failed = false;
     try {
@@ -118,6 +127,8 @@ exports.editUser = async (req, res) => {
     }
 }
 
+// handles user notifications update
+// validates input data and updates user notifications settings in db for authenticated user, returns updated data
 exports.updateNotifications = async (req, res) => {
     await checkSchema(NotificationSchema).run(req);
     const errors = validationResult(req);
