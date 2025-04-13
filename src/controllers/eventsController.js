@@ -5,6 +5,7 @@ const { Op } = db.Sequelize;
 const path = require('path');
 const { PaymentSchema } = require('../validators/eventsValidator');
 const { validationResult, checkSchema } = require('express-validator');
+const sequelize = db.sequelize;
 
 const allowedCategories = ['art', 'technology', 'sports', 'music', 'politics', 'other'];
 
@@ -91,40 +92,71 @@ exports.createEvent = async (req, res) => {
     return res.status(401).json({ error: 'User not authenticated' });
   }
 
-  let photoPath = null;
-  if (req.file) {
-    photoPath = req.file.path;
+  if (!title || !place || !latitude || !longitude || !date || !category || !description) {
+    return res.status(400).json({ error: 'All fields (title, place, latitude, longitude, date, category, description) must be provided.' });
   }
+
+  if (!allowedCategories.includes(category.toLowerCase())) {
+    return res.status(400).json({ error: `Invalid category. Allowed: ${allowedCategories.join(', ')}.` });
+  }
+
+  const eventDate = new Date(date);
+  if (isNaN(eventDate.getTime())) {
+    return res.status(400).json({ error: 'Invalid date provided.' });
+  }
+  if (eventDate < new Date()) {
+    return res.status(400).json({ error: 'Event date must be in the future.' });
+  }
+
+  if (Number(price) > 0) {
+    const bankAccount = await db.BankAccount.findOne({ where: { user_id: creator_id } });
+    if (!bankAccount) {
+      return res.status(400).json({ error: 'Paid events require a bank account. Please set up your bank account first.' });
+    }
+  }
+
+  if (Number(price) < 0) {
+    return res.status(400).json({ error: 'Enter a valid price.' });
+}
+
+  const duplicateEvent = await db.Event.findOne({
+    where: {
+      title,
+      date: eventDate
+    }
+  });
+  if (duplicateEvent) {
+    return res.status(400).json({ error: 'An event with the same title and date already exists.' });
+  }
+
+  const photo = req.file ? req.file.path : null;
 
   try {
 
     const event = await db.Event.create({
-      title, place, latitude, longitude, date, category, description, price,
-      photo: photoPath,
+      title,
+      place,
+      latitude,
+      longitude,
+      date: eventDate,
+      category: category.toLowerCase(),
+      description,
+      price,
+      photo,
       creator_id
     });
 
-
-    if (req.file) {
-      const ext = path.extname(req.file.originalname);
-      const newFilename = `${event.id}_photo${ext}`;
-      const newFilePath = path.join(req.file.destination, newFilename);
-      fs.renameSync(req.file.path, newFilePath);
-      await event.update({ photo: newFilePath });
-    }
-
-    const eventData = event.toJSON();
     const wss = req.app.locals.wss;
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(JSON.stringify({
           type: 'newEvent',
-          data: eventData
+          data: event
         }));
       }
     });
 
-    return res.status(201).json(eventData);
+    return res.status(201).json(event);
   } catch (error) {
     console.error('Error creating event:', error);
     return res.status(500).json({ error: 'Failed to create event' });
@@ -134,6 +166,7 @@ exports.createEvent = async (req, res) => {
 
 exports.updateEvent = async (req, res) => {
   const { id } = req.params;
+  
   try {
     const event = await db.Event.findByPk(id);
     if (!event) {
@@ -143,26 +176,63 @@ exports.updateEvent = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this event' });
     }
 
-    let updatedData = { ...req.body };
+    const { title, place, latitude, longitude, date, category, description, price } = req.body;
+
+    if (!title || !place || !latitude || !longitude || !date || !category || !description) {
+      return res.status(400).json({ error: 'All fields (title, place, latitude, longitude, date, category, description) must be provided.' });
+    }
+
+    if (category && !allowedCategories.includes(category.toLowerCase())) {
+      return res.status(400).json({ error: `Invalid category. Allowed: ${allowedCategories.join(', ')}.` });
+    }
+
+    if (date) {
+      const newDate = new Date(date);
+      if (isNaN(newDate.getTime())) {
+        return res.status(400).json({ error: 'Invalid date provided.' });
+      }
+      if (newDate < new Date()) {
+        return res.status(400).json({ error: 'Event date must be in the future.' });
+      }
+      req.body.date = newDate;
+    }
+
+    if (title || date) {
+      const titleToCheck = title || event.title;
+      const dateToCheck = date || event.date;
+      const duplicateEvent = await db.Event.findOne({
+        where: {
+          title: titleToCheck,
+          date: dateToCheck,
+          id: { [Op.ne]: id }
+        }
+      });
+      if (duplicateEvent) {
+        return res.status(400).json({ error: 'An event with the same title and date already exists.' });
+      }
+    }
+
+    if (price && Number(price) > 0) {
+      const bankAccount = await db.BankAccount.findOne({ where: { user_id: req.user.id } });
+      if (!bankAccount) {
+        return res.status(400).json({ error: 'Paid events require a bank account.' });
+      }
+    }
+    if (price && Number(price) < 0) {
+        return res.status(400).json({ error: 'Enter a valid price.' });
+    }
 
     if (req.file) {
-
-      const ext = path.extname(req.file.originalname);
-      const newFilename = `${event.id}_photo${ext}`;
-      const newFilePath = path.join(req.file.destination, newFilename);
-
       if (event.photo && fs.existsSync(event.photo)) {
         fs.unlinkSync(event.photo);
       }
-
-      fs.renameSync(req.file.path, newFilePath);
-
-      updatedData.photo = newFilePath;
+      req.body.photo = req.file.path;
     }
-
-    await event.update(updatedData);
+    
+    await event.update(req.body);
     const updatedEvent = event.toJSON();
 
+ 
     const wss = req.app.locals.wss;
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
@@ -172,13 +242,14 @@ exports.updateEvent = async (req, res) => {
         }));
       }
     });
-
+    
     return res.status(200).json(updatedEvent);
   } catch (error) {
     console.error('Error updating event:', error);
     return res.status(500).json({ error: 'Failed to update event' });
   }
 };
+
 
 
 exports.deleteEvent = async (req, res) => {
@@ -655,3 +726,144 @@ exports.searchEvents = async (req, res) => {
     return res.status(500).json({ error: 'Failed to search events' });
   }
 };
+
+exports.getEventsNearYou = async (req, res) => {
+  try {
+    const KILOMETERS_PER_DEGREE_LAT = 111;
+
+    let { lat, lon, radius } = req.query;
+
+    lat = parseFloat(lat);
+    lon = parseFloat(lon);
+    radius = parseFloat(radius) || 10;
+
+    if (isNaN(lat) || isNaN(lon)) {
+      return res.status(400).json({
+        error: 'Missing or invalid latitude/longitude'
+      });
+    }
+
+    const latDelta = radius / KILOMETERS_PER_DEGREE_LAT;
+    const lonDelta = radius / (KILOMETERS_PER_DEGREE_LAT * Math.cos(lat * Math.PI / 180));
+
+    const events = await db.Event.findAll({
+      where: {
+        latitude: {
+          [Op.between]: [lat - latDelta, lat + latDelta]
+        },
+        longitude: {
+          [Op.between]: [lon - lonDelta, lon + lonDelta]
+        }
+      },
+      attributes: ['id', 'title', 'photo', 'date', 'description', 'price'],
+      order: [['date', 'ASC']]
+    });
+
+    const formatted = events.map((event) => {
+      const oneSentence = event.description
+        ? event.description.split('. ')[0] + '.'
+        : '';
+      return {
+        id: event.id,
+        name: event.title,
+        photo: event.photo,
+        date: event.date,
+        price: event.price,
+        description: oneSentence
+      };
+    });
+
+    return res.status(200).json(formatted);
+  } catch (error) {
+    console.error('Error fetching events near coordinates:', error);
+    return res.status(500).json({ error: 'Failed to fetch nearby events' });
+  }
+};
+
+exports.getRecommendedEvents = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const userEvents = await db.UserEvent.findAll({
+      where: { user_id: userId },
+      include: [
+        {
+          model: db.Event,
+          attributes: ['id', 'category'],
+        },
+      ],
+    });
+
+    if (userEvents.length === 0) {
+
+      const fallbackEvents = await db.Event.findAll({
+        attributes: ['id', 'title', 'photo', 'date', 'description', 'price'],
+        limit: 10,
+        order: sequelize.literal('RANDOM()'),
+      });
+
+      const simplifiedFallback = fallbackEvents.map((event) => formatEvent(event));
+      return res.status(200).json(simplifiedFallback);
+    }
+
+    const categoryCount = {};
+    for (const ue of userEvents) {
+      const cat = ue.Event.category;
+      if (!cat) continue;
+      categoryCount[cat] = (categoryCount[cat] || 0) + 1;
+    }
+
+    let topCategory = null;
+    let maxCount = 0;
+    for (const [cat, count] of Object.entries(categoryCount)) {
+      if (count > maxCount) {
+        maxCount = count;
+        topCategory = cat;
+      }
+    }
+
+
+    const userEventIds = userEvents.map(ue => ue.Event.id);
+
+    const recommendedEvents = await db.Event.findAll({
+      attributes: ['id', 'title', 'photo', 'date', 'description', 'price'],
+      where: {
+        category: topCategory,
+        id: { [Op.notIn]: userEventIds },
+      },
+      limit: 10,
+      order: [['date', 'ASC']],
+    });
+
+    if (recommendedEvents.length === 0) {
+      const fallbackEvents = await db.Event.findAll({
+        attributes: ['id', 'title', 'photo', 'date', 'description', 'price'],
+        limit: 10,
+        order: sequelize.literal('RANDOM()'),
+      });
+      const simplified = fallbackEvents.map((event) => formatEvent(event));
+      return res.status(200).json(simplified);
+    }
+
+    const simplifiedRecommended = recommendedEvents.map((event) => formatEvent(event));
+    return res.status(200).json(simplifiedRecommended);
+  } catch (error) {
+    console.error('Error fetching recommended events:', error);
+    return res.status(500).json({ error: 'Failed to fetch recommended events' });
+  }
+};
+
+function formatEvent(event) {
+  const oneSentence = event.description
+    ? event.description.split('. ')[0] + '.'
+    : '';
+  return {
+    id: event.id,
+    name: event.title,
+    photo: event.photo,
+    date: event.date,
+    price: event.price,
+    description: oneSentence,
+  };
+}
+
