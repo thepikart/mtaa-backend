@@ -39,6 +39,7 @@ router.get('/users/:id', UsersController.getUserProfile);
 router.get('/users/:id/registered', EventsController.getUserEventsRegistered);
 router.get('/users/:id/created', EventsController.getUserEventsCreated);
 
+router.get('/users/photo/:id', UsersController.getUserPhoto);
 
 router.get('/events/recommended', EventsController.getRecommendedEvents);
 router.get('/events/near', EventsController.getEventsNearYou);
@@ -60,5 +61,7 @@ router.delete('/events/:event_id/comments/:comment_id', EventsController.deleteE
 
 router.post('/events/:event_id/register', EventsController.registerForEvent);
 router.delete('/events/:event_id/cancel', EventsController.cancelEventRegistration);
+
+router.get('/events/photo/:id', EventsController.getEventPhoto);
 
 module.exports = router;

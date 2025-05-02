@@ -3,7 +3,6 @@ const { validationResult, checkSchema } = require('express-validator');
 const { BankAccountSchema, editUserSchema, NotificationSchema } = require('../validators/usersValidator');
 const fs = require('fs');
 
-
 // handles user profile retrieval
 // retrieves user data from db for profile page based on user id
 exports.getUserProfile = async (req, res) => {
@@ -148,4 +147,20 @@ exports.updateNotifications = async (req, res) => {
     await userNotifications.update({ my_attendees, my_comments, my_time, reg_attendees, reg_comments, reg_time });
 
     return res.status(200).json(userNotifications);
+}
+
+exports.getUserPhoto = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const user = await db.User.findByPk(id);
+
+        if (!user || !user.photo) {
+            return res.status(404).json({ message: 'User photo not found' });
+        }
+
+        res.sendFile(user.photo, { root: '.' });
+    }
+    catch (err) {
+        res.status(500).json({ message: 'Error retrieving user photo' });
+    }
 }

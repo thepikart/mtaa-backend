@@ -13,7 +13,7 @@ module.exports = {
             email: 'user1@email.com',
             password: await bcrypt.hash('password1', 10),
             bio: faker.lorem.lines(2),
-            photo: faker.image.avatar(),
+            photo: null,
             createdAt: new Date(),
             updatedAt: new Date()
         }], {});
@@ -29,7 +29,7 @@ module.exports = {
                 email: faker.internet.email(),
                 password: faker.internet.password(),
                 bio: faker.lorem.sentence(),
-                photo: faker.image.avatar(),
+                photo: null,
                 createdAt: new Date(),
                 updatedAt: new Date()
             });
@@ -47,7 +47,7 @@ module.exports = {
                 category: faker.helpers.arrayElement(['politics', 'sports', 'music', 'technology', 'art', 'other']),
                 description: faker.lorem.paragraphs({ min: 1, max: 4 }),
                 price: faker.commerce.price({ max: 100 }),
-                photo: faker.image.urlPicsumPhotos(),
+                photo: null,
                 creator_id: faker.helpers.arrayElement(usersDB).id,
                 createdAt: new Date(),
                 updatedAt: new Date()

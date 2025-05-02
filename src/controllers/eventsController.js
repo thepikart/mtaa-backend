@@ -946,3 +946,17 @@ function formatEvent(event) {
   };
 }
 
+exports.getEventPhoto = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const event = await db.Event.findByPk(id);
+    if (!event || !event.photo) {
+      return res.status(404).json({ message: 'Event photo not found' });
+    }
+    
+    res.sendFile(event.photo, { root: '.' });
+  }
+  catch (err) {
+    res.status(500).json({ message: 'Error retrieving event photo' });
+  }
+}
