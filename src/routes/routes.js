@@ -34,6 +34,7 @@ router.put('/users/bank-account', UsersController.editBankAccount);
 router.patch('/users/edit', upload.single('photo'), UsersController.editUser);
 router.patch('/users/notifications', UsersController.updateNotifications);
 router.get('/users/my-events', EventsController.getMyEvents);
+router.get('/users/all-my-events', EventsController.getAllMyEvents);
 
 router.get('/users/:id', UsersController.getUserProfile);
 router.get('/users/:id/registered', EventsController.getUserEventsRegistered);

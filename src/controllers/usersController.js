@@ -108,9 +108,11 @@ exports.editUser = async (req, res) => {
 
         await user.update({ name, surname, username, bio, photo });
         return res.status(200).json({
+            id: user.id,
             name: user.name,
             surname: user.surname,
             username: user.username,
+            email: user.email,
             bio: user.bio,
             photo: user.photo,
         });

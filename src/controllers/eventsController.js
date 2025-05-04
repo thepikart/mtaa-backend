@@ -132,7 +132,7 @@ exports.createEvent = async (req, res) => {
   if (Number(price) < 0) {
     failed = true;
     return res.status(400).json({ error: 'Enter a valid price.' });
-}
+  }
 
   const duplicateEvent = await db.Event.findOne({
     where: {
@@ -251,21 +251,21 @@ exports.updateEvent = async (req, res) => {
       }
     }
     if (price && Number(price) < 0) {
-        failed = true;
-        return res.status(400).json({ error: 'Enter a valid price.' });
+      failed = true;
+      return res.status(400).json({ error: 'Enter a valid price.' });
     }
-    
+
     if (req.file) {
       if (event.photo && fs.existsSync(event.photo)) {
         fs.unlinkSync(event.photo);
       }
       req.body.photo = req.file.path;
     }
-    
+
     await event.update(req.body);
     const updatedEvent = event.toJSON();
 
- 
+
     const wss = req.app.locals.wss;
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
@@ -275,7 +275,7 @@ exports.updateEvent = async (req, res) => {
         }));
       }
     });
-    
+
     return res.status(200).json(updatedEvent);
   } catch (error) {
     console.error('Error updating event:', error);
@@ -953,10 +953,36 @@ exports.getEventPhoto = async (req, res) => {
     if (!event || !event.photo) {
       return res.status(404).json({ message: 'Event photo not found' });
     }
-    
+
     res.sendFile(event.photo, { root: '.' });
   }
   catch (err) {
     res.status(500).json({ message: 'Error retrieving event photo' });
   }
 }
+
+exports.getAllMyEvents = async (req, res) => {
+  const { id } = req.user;
+
+  try {
+    const registered = await db.UserEvent.findAll({
+      where: { user_id: id },
+      attributes: ['event_id']
+    });
+
+    const created = await db.Event.findAll({
+      where: { creator_id: id },
+      attributes: ['id']
+    });
+
+    return res.status(200).json({
+      registered: registered.map((event) => event.event_id),
+      created: created.map((event) => event.id)
+    });
+  }
+  catch (error) {
+    return res.status(500).json({ message: 'Failed to fetch event IDs' });
+  }
+
+
+};
