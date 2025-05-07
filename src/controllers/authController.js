@@ -43,6 +43,12 @@ exports.login = async (req, res) => {
         { expiresIn: '1h' }
     )
 
+    const refreshToken = jwt.sign(
+        { id: user.id, email: user.email },
+        process.env.JWT_REFRESH_KEY,
+        { expiresIn: '14d' }
+    )
+
     return res.status(200).json({
         user: {
             id: user.id,
@@ -56,6 +62,7 @@ exports.login = async (req, res) => {
         token,
         bankAccount: !!user.BankAccount,
         notifications: user.Notification,
+        refreshToken,
     });
 }
 
@@ -100,6 +107,12 @@ exports.createAccount = async (req, res) => {
         { expiresIn: '1h' }
     )
 
+    const refreshToken = jwt.sign(
+        { id: user.id, email: user.email },
+        process.env.JWT_REFRESH_KEY,
+        { expiresIn: '14d' }
+    )
+
     return res.status(201).json({
         user: {
             id: user.id,
@@ -110,7 +123,8 @@ exports.createAccount = async (req, res) => {
             bio: user.bio,
             photo: user.photo,
         },
-        token
+        token,
+        refreshToken,
     });
 }
 
@@ -147,4 +161,26 @@ exports.getMe = async (req, res) => {
         bankAccount: !!user.BankAccount,
         notifications: user.Notification
     });
+}
+
+exports.refreshToken = async (req, res) => {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+        return res.status(400).json({ message: 'Refresh token is required' });
+    }
+
+    try{
+        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_KEY);
+        const token = jwt.sign(
+            { id: decoded.id, email: decoded.email },
+            process.env.JWT_KEY,
+            { expiresIn: '1h' }
+        )
+        console.log('Token refreshed for user:', decoded.id);
+        return res.status(200).json({ token });
+    }
+    catch(err) {
+        return res.status(401).json({ message: 'Invalid refresh token' });
+    }
 }
