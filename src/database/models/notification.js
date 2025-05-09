@@ -14,6 +14,7 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   Notification.init({
+    push_token: DataTypes.STRING,
     my_attendees: DataTypes.BOOLEAN,
     my_comments: DataTypes.BOOLEAN,
     my_time: DataTypes.BOOLEAN,

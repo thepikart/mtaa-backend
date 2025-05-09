@@ -13,6 +13,9 @@ module.exports = {
         type: Sequelize.INTEGER,
         references: { model: "Users", key: "id" }
       },
+      push_token: {
+        type: Sequelize.STRING,
+      },
       my_attendees: {
         type: Sequelize.BOOLEAN,
         defaultValue: true

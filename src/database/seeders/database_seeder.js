@@ -35,6 +35,7 @@ module.exports = {
             });
         }
         const usersDB = await queryInterface.bulkInsert('Users', fakerUsers, { returning: true });
+        await queryInterface.bulkInsert('Notifications', usersDB.map(user => ({ user_id: user.id })), {});
 
         const events = [];
         for (let i = 0; i < 20; i++) {

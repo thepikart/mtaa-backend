@@ -184,3 +184,23 @@ exports.refreshToken = async (req, res) => {
         return res.status(401).json({ message: 'Invalid refresh token' });
     }
 }
+
+exports.registerPushToken = async (req, res) => {
+    const { push_token } = req.body;
+    const { id } = req.user;
+
+    if (!push_token) {
+        return res.status(400).json({ message: 'Push token is required' });
+    }
+
+    console.log('Registering push token:', push_token);
+    const notification = await db.Notification.findOne({ where: { user_id: id } });
+
+    if (!notification) {
+        return res.status(404).json({ message: 'Notification not found' });
+    }
+
+    await notification.update({ push_token });
+
+    return res.status(200).json({ message: 'Push token registered successfully' });
+}

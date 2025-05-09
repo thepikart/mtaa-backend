@@ -13,6 +13,7 @@ app.use(express.json());
 app.use('/users', AuthMiddleware.verifyUser);
 app.use('/me', AuthMiddleware.verifyUser);
 app.use('/events', AuthMiddleware.verifyUser);
+app.use('/register-push-token', AuthMiddleware.verifyUser);
 app.use(routes);
 
 const server = http.createServer(app);

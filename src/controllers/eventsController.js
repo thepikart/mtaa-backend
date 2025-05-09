@@ -6,6 +6,7 @@ const path = require('path');
 const { PaymentSchema } = require('../validators/eventsValidator');
 const { validationResult, checkSchema } = require('express-validator');
 const sequelize = db.sequelize;
+const admin = require('../firebase');
 
 const allowedCategories = ['art', 'technology', 'sports', 'music', 'politics', 'other'];
 
@@ -265,6 +266,11 @@ exports.updateEvent = async (req, res) => {
     await event.update(req.body);
     const updatedEvent = event.toJSON();
 
+    const notifBody = `The event "${title}" at "${place}" on ${date.toLocaleString("sk-SK", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    })} has been updated.`;
+    await handleNotifications(id, null, null, null, 'Event Update', notifBody, 'info');
 
     const wss = req.app.locals.wss;
     wss.clients.forEach((client) => {
@@ -304,6 +310,18 @@ exports.deleteEvent = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to delete this event' });
     }
 
+    const eventData = {
+      title: event.title,
+      place: event.place,
+      date: event.date.toLocaleString("sk-SK", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }),
+    }
+
+    handleNotifications(id, null, null, null, 'Event Cancelled',
+      `The event "${eventData.title}" at "${eventData.place}" on ${eventData.date} has been cancelled.`, 'error');
+
     await db.UserEvent.destroy({ where: { event_id: id } });
 
     await db.Comment.destroy({ where: { event_id: id } });
@@ -313,6 +331,15 @@ exports.deleteEvent = async (req, res) => {
     }
 
     await event.destroy();
+
+    for (const msg of messages) {
+      try {
+        await admin.messaging().send(msg);
+      }
+      catch (error) {
+        console.error('Error sending notification to token:', msg.token, error.message);
+      }
+    }
 
     const wss = req.app.locals.wss;
     wss.clients.forEach((client) => {
@@ -390,6 +417,9 @@ exports.createEventComment = async (req, res) => {
       }]
     });
 
+    handleNotifications(event_id, event.creator_id, 'reg_comments', 'my_comments', 'New Comment',
+      `New comment on "${event.title}" by ${commentData.User.username}: "${content}"`, 'info');
+    
     const wss = req.app.locals.wss;
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
@@ -585,9 +615,17 @@ exports.registerForEvent = async (req, res) => {
       }
 
       await db.UserEvent.create({ user_id: id, event_id });
+      const user = await db.User.findByPk(id);
+      handleNotifications(event_id, id, 'reg_attendees', 'my_attendees', 'New Attendee',
+        `User ${user.username} has registered for your event "${event.title}"`, 'info');
+
       return res.status(200).json({ message: 'Payment successful! You are now registered for the event.' });
     }
     else {
+      const user = await db.User.findByPk(id);
+      handleNotifications(event_id, id, 'reg_attendees', 'my_attendees', 'New Registration',
+        `User ${user.username} has registered for event "${event.title}"`, 'info');
+
       await db.UserEvent.create({ user_id: id, event_id });
       return res.status(200).json({ message: 'You are now registered for the event.' });
     }
@@ -617,6 +655,11 @@ exports.cancelEventRegistration = async (req, res) => {
       return res.status(404).json({ message: 'You are not registered for this event' });
     }
     await registration.destroy();
+
+    const user = await db.User.findByPk(id);
+    handleNotifications(event_id, id, 'reg_attendees', 'my_attendees', 'Registration Cancelled',
+      `User ${user.username} has cancelled their registration for event "${event.title}"`, 'error');
+
     if (event.price > 0) {
       return res.status(200).json({ message: 'You have successfully canceled your registration for the event. A refund will be processed shortly.' });
     }
@@ -986,3 +1029,63 @@ exports.getAllMyEvents = async (req, res) => {
 
 
 };
+
+const handleNotifications = async (event_id, creator_id, notif_type, my_notif_type, title, body, toast_type) => {
+  var registeredUsers = await db.User.findAll({
+    include: [
+      {
+        model: db.Notification,
+        where: {
+          push_token: { [db.Sequelize.Op.ne]: null },
+          ...(notif_type && { [notif_type]: true })
+        },
+        required: true
+      },
+      {
+        model: db.Event,
+        through: {
+          model: db.UserEvent,
+          where: { event_id: event_id }
+        },
+        required: true
+      }
+    ]
+  });
+
+  if (creator_id) {
+    const creator = await db.User.findByPk(creator_id, {
+      include: [{
+        model: db.Notification,
+        where: {
+          push_token: { [db.Sequelize.Op.ne]: null },
+          [my_notif_type]: true
+        },
+        required: true
+      }]
+    });
+    if (creator) {
+      registeredUsers = [...registeredUsers, creator];
+    }
+  }
+
+  const messages = registeredUsers.map((user) => ({
+    token: user.Notification.push_token,
+    notification: {
+      title: title,
+      body: body,
+    },
+    data: {
+      type: toast_type,
+      id: toast_type == "error" ? "0" : event_id,
+    }
+  }));
+
+  for (const msg of messages) {
+    try {
+      await admin.messaging().send(msg);
+    }
+    catch (error) {
+      console.error('Error sending notification to token:', msg.token, error.message);
+    }
+  }
+}
