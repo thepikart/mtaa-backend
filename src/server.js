@@ -6,6 +6,8 @@ const db = require('./database/models');
 const routes = require('./routes/routes');
 const AuthMiddleware = require('./middleware/authMiddleware');
 const socket = require('./socket');
+require('./cron/deleteOldEvents');
+require('./cron/sendTimeNotifications');
 
 const app = express();
 app.use(cors());

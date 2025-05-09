@@ -2,7 +2,6 @@ const db = require('../database/models');
 const WebSocket = require('ws');
 const fs = require('fs');
 const { Op } = db.Sequelize;
-const path = require('path');
 const { PaymentSchema } = require('../validators/eventsValidator');
 const { validationResult, checkSchema } = require('express-validator');
 const sequelize = db.sequelize;
@@ -319,7 +318,7 @@ exports.deleteEvent = async (req, res) => {
       }),
     }
 
-    handleNotifications(id, null, null, null, 'Event Cancelled',
+    await handleNotifications(id, null, null, null, 'Event Cancelled',
       `The event "${eventData.title}" at "${eventData.place}" on ${eventData.date} has been cancelled.`, 'error');
 
     await db.UserEvent.destroy({ where: { event_id: id } });
@@ -417,7 +416,7 @@ exports.createEventComment = async (req, res) => {
       }]
     });
 
-    handleNotifications(event_id, event.creator_id, 'reg_comments', 'my_comments', 'New Comment',
+    await handleNotifications(event_id, event.creator_id, 'reg_comments', 'my_comments', 'New Comment',
       `New comment on "${event.title}" by ${commentData.User.username}: "${content}"`, 'info');
     
     const wss = req.app.locals.wss;
@@ -614,16 +613,17 @@ exports.registerForEvent = async (req, res) => {
         return res.status(400).json({ message: errors.array()[0].msg });
       }
 
-      await db.UserEvent.create({ user_id: id, event_id });
       const user = await db.User.findByPk(id);
-      handleNotifications(event_id, id, 'reg_attendees', 'my_attendees', 'New Attendee',
-        `User ${user.username} has registered for your event "${event.title}"`, 'info');
+      await handleNotifications(event_id, event.creator_id, 'reg_attendees', 'my_attendees', 'New Attendee',
+        `User ${user.username} has registered for event "${event.title}"`, 'info');
+
+      await db.UserEvent.create({ user_id: id, event_id });
 
       return res.status(200).json({ message: 'Payment successful! You are now registered for the event.' });
     }
     else {
       const user = await db.User.findByPk(id);
-      handleNotifications(event_id, id, 'reg_attendees', 'my_attendees', 'New Registration',
+      await handleNotifications(event_id, event.creator_id, 'reg_attendees', 'my_attendees', 'New Registration',
         `User ${user.username} has registered for event "${event.title}"`, 'info');
 
       await db.UserEvent.create({ user_id: id, event_id });
@@ -657,7 +657,7 @@ exports.cancelEventRegistration = async (req, res) => {
     await registration.destroy();
 
     const user = await db.User.findByPk(id);
-    handleNotifications(event_id, id, 'reg_attendees', 'my_attendees', 'Registration Cancelled',
+    await handleNotifications(event_id, event.creator_id, 'reg_attendees', 'my_attendees', 'Registration Cancelled',
       `User ${user.username} has cancelled their registration for event "${event.title}"`, 'error');
 
     if (event.price > 0) {
