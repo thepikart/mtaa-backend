@@ -417,7 +417,7 @@ exports.createEventComment = async (req, res) => {
     });
 
     await handleNotifications(event_id, event.creator_id, 'reg_comments', 'my_comments', 'New Comment',
-      `New comment on "${event.title}" by ${commentData.User.username}: "${content}"`, 'info');
+      `New comment on "${event.title}" by ${commentData.User.username}: "${content}"`, 'info', user_id);
     
     const wss = req.app.locals.wss;
     wss.clients.forEach((client) => {
@@ -1030,7 +1030,7 @@ exports.getAllMyEvents = async (req, res) => {
 
 };
 
-const handleNotifications = async (event_id, creator_id, notif_type, my_notif_type, title, body, toast_type) => {
+const handleNotifications = async (event_id, creator_id, notif_type, my_notif_type, title, body, toast_type, exclude_id) => {
   var registeredUsers = await db.User.findAll({
     include: [
       {
@@ -1066,6 +1066,10 @@ const handleNotifications = async (event_id, creator_id, notif_type, my_notif_ty
     if (creator) {
       registeredUsers = [...registeredUsers, creator];
     }
+  }
+
+  if (exclude_id) {
+    registeredUsers = registeredUsers.filter(user => user.id !== exclude_id);
   }
 
   const messages = registeredUsers.map((user) => ({
