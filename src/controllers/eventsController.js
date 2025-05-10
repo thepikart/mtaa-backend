@@ -60,7 +60,7 @@ exports.getEventById = async (req, res) => {
     }
 
     const creator = await db.User.findByPk(event.creator_id, {
-      attributes: ['id', 'photo', 'username']
+      attributes: ['id', 'photo', 'name', 'surname', 'username']
     });
 
     const response = {
@@ -75,7 +75,9 @@ exports.getEventById = async (req, res) => {
       creator: creator
         ? {
           id: creator.id,
-          name: creator.username,
+          name: creator.name,
+          surname: creator.surname,
+          username: creator.username,
           photo: creator.photo
         }
         : null
@@ -317,9 +319,11 @@ exports.deleteEvent = async (req, res) => {
         timeStyle: "short",
       }),
     }
-
-    await handleNotifications(id, null, null, null, 'Event Cancelled',
-      `The event "${eventData.title}" at "${eventData.place}" on ${eventData.date} has been cancelled.`, 'error');
+    var body = `The event "${eventData.title}" at "${eventData.place}" on ${eventData.date} has been cancelled.`;
+    if (event.price > 0) {
+      body += ' A refund will be processed shortly.';
+    }
+    await handleNotifications(id, null, null, null, 'Event Cancelled', body, 'error');
 
     await db.UserEvent.destroy({ where: { event_id: id } });
 
@@ -373,7 +377,7 @@ exports.getEventComments = async (req, res) => {
       where: { event_id },
       include: [{
         model: db.User,
-        attributes: ['id', 'photo', 'username']
+        attributes: ['id', 'photo', 'name', 'surname', 'username']
       }],
       limit,
       offset,
@@ -412,7 +416,7 @@ exports.createEventComment = async (req, res) => {
     const commentData = await db.Comment.findByPk(newComment.id, {
       include: [{
         model: db.User,
-        attributes: ['id', 'photo', 'username']
+        attributes: ['id', 'photo', 'name', 'surname', 'username']
       }]
     });
 
@@ -771,7 +775,7 @@ exports.getEventAttendees = async (req, res) => {
       include: [
         {
           model: db.User,
-          attributes: ['id', 'username', 'photo'],
+          attributes: ['id', 'username', 'name', 'surname', 'photo'],
         },
       ],
     });
@@ -779,6 +783,8 @@ exports.getEventAttendees = async (req, res) => {
     const attendees = userEvents.map((ue) => ({
       userId: ue.User.id,
       username: ue.User.username,
+      name: ue.User.name,
+      surname: ue.User.surname,
       photo: ue.User.photo,
     }));
 
@@ -1003,32 +1009,6 @@ exports.getEventPhoto = async (req, res) => {
     res.status(500).json({ message: 'Error retrieving event photo' });
   }
 }
-
-exports.getAllMyEvents = async (req, res) => {
-  const { id } = req.user;
-
-  try {
-    const registered = await db.UserEvent.findAll({
-      where: { user_id: id },
-      attributes: ['event_id']
-    });
-
-    const created = await db.Event.findAll({
-      where: { creator_id: id },
-      attributes: ['id']
-    });
-
-    return res.status(200).json({
-      registered: registered.map((event) => event.event_id),
-      created: created.map((event) => event.id)
-    });
-  }
-  catch (error) {
-    return res.status(500).json({ message: 'Failed to fetch event IDs' });
-  }
-
-
-};
 
 const handleNotifications = async (event_id, creator_id, notif_type, my_notif_type, title, body, toast_type, exclude_id) => {
   var registeredUsers = await db.User.findAll({
