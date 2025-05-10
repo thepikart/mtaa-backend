@@ -58,6 +58,7 @@ Table bank_account {
 Table notifications {
   id integer [pk]
   user_id integer [not null]
+  push_token varchar
   my_attendees bool
   my_comments bool
   my_time bool
