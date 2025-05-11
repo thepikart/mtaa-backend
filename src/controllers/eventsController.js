@@ -335,15 +335,6 @@ exports.deleteEvent = async (req, res) => {
 
     await event.destroy();
 
-    for (const msg of messages) {
-      try {
-        await admin.messaging().send(msg);
-      }
-      catch (error) {
-        console.error('Error sending notification to token:', msg.token, error.message);
-      }
-    }
-
     const wss = req.app.locals.wss;
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
@@ -687,7 +678,7 @@ exports.getUpcomingEvents = async (req, res) => {
       where: {
         date: { [Op.gte]: today },
       },
-      attributes: ['id', 'title', 'photo', 'date', 'description', 'price'],
+      attributes: ['id', 'title', 'photo', 'date', 'place', 'description', 'price'],
       limit: 10,
       order: [['date', 'ASC']],
     });
@@ -701,6 +692,7 @@ exports.getUpcomingEvents = async (req, res) => {
         id: event.id,
         name: event.title,
         photo: event.photo,
+        place: event.place,
         date: event.date,
         price: event.price,
         description: oneSentence,
@@ -732,7 +724,7 @@ exports.getEventsByCategory = async (req, res) => {
 
     const events = await db.Event.findAll({
       where: { category: cat },
-      attributes: ['id', 'title', 'photo', 'date', 'description', 'price'],
+      attributes: ['id', 'title', 'photo', 'date', 'place', 'description', 'price'],
       limit,
       offset,
       order: [['date', 'ASC']],
@@ -746,6 +738,7 @@ exports.getEventsByCategory = async (req, res) => {
         name: event.title,
         photo: event.photo,
         date: event.date,
+        place: event.place,
         price: event.price,
         description: oneSentence,
       };
@@ -817,7 +810,7 @@ exports.searchEvents = async (req, res) => {
       where: {
         [Op.and]: andConditions
       },
-      attributes: ['id', 'title', 'photo', 'date', 'description', 'price'],
+      attributes: ['id', 'title', 'photo', 'date', 'place', 'description', 'price'],
       limit: 20,
       order: [['date', 'ASC']]
     });
@@ -830,6 +823,7 @@ exports.searchEvents = async (req, res) => {
         id: event.id,
         name: event.title,
         photo: event.photo,
+        place: event.place,
         date: event.date,
         price: event.price,
         description: oneSentence
